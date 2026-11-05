@@ -116,6 +116,15 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080
 | PUT | `/api/vehicles/{id}` | 修改基础信息（不含金额与状态） |
 | POST | `/api/vehicles/{id}/status` | 状态流转，过状态机校验 |
 | POST | `/api/vehicles/{id}/costs` | 追加成本（整备/运输/过户） |
+| GET | `/api/vehicles/{id}/pricing` | 定价测算（资金成本/保本底价/建议价/滞销等级） |
+| GET/POST | `/api/vehicles/{id}/certificates` | 车辆证件列表与新增 |
+| GET | `/api/certificates/expiring` | 到期证件列表 |
+| GET | `/api/alerts` | 待处理预警（DANGER 优先） |
+| POST | `/api/alerts/{id}/handle` | 处理预警（RESOLVED / IGNORED） |
+| POST | `/api/alerts/inspect` | 手动触发巡检 |
+| POST | `/api/videos/tasks` | 提交视频生成任务（幂等） |
+| GET | `/api/videos/tasks/{id}` | 任务状态，前端轮询用 |
+| GET | `/api/videos/tasks/{id}/assets` | 产物列表（RAW / FINAL） |
 
 登录后带请求头 `satoken: <tokenValue>`。初始管理员 `admin / admin123`，由 `DataInitializer` 首次启动时创建。
 
@@ -124,6 +133,11 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080
 - 阶段 0 完成：13 张表建好，`/api/health` 返回 `tableCount: 13`。
 - 阶段 1 完成：登录鉴权 + 车辆五个写接口 + 五态状态机 + 成本明细 + 状态流水。
   非法流转实测被拒（跳步、倒流、终态回退、乱传状态值），清库后禁止补录成本。
-- 阶段 4 有前置阻塞：Seedance 图生视频、聆眸数字人、TTS 均需火山引擎 AK/SK，当前没有账号。
-  方案：`VideoProvider` 接口抽象，先接 mock 实现产出占位素材，FFmpeg 合成与字幕烧录真实执行；
-  拿到 AK/SK 只换实现类，不改架构。
+- 阶段 2 完成：定价全部读 `pricing_rule`（14 个参数），规则改表 30 秒内生效，
+  实测把第三档天数从 75 改成 200，持有 96 天的车建议价从 13% 档回落到 8% 档。
+  每日巡检产出滞销、毛利过低、证件到期三类预警，重复执行不产生重复预警。
+- 阶段 3 完成：`video_task` 状态表 + 事件驱动提交 + 5 秒轮询推进 + 三档超时 + 重试 3 次 +
+  启动补偿。实测把进程杀掉重启，卡在 PENDING 的任务被补偿救回并跑完。
+- 阶段 4 完成：DeepSeek 改写文案（无 key 自动降级本地模板）+ mock 图生视频 +
+  FFmpeg 字幕烧录与音轨合成，产出真实 mp4。TTS 与真实图生视频仍缺火山引擎 AK/SK。
+- 阶段 5 待做：Vue3 前端。

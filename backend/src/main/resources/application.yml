@@ -69,6 +69,22 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+app:
+  video:
+    # 占位供应商（mock）或真实供应商（seedance，尚未实现）。
+    # mock 会真的用 FFmpeg 生成素材并合成成片，只是"上游素材"是本地造的
+    provider: mock
+    # 产物目录，相对 backend 运行目录
+    work-dir: ./uploads/videos
+    # ffmpeg 可执行文件，装在 PATH 里就写 ffmpeg
+    ffmpeg-path: ffmpeg
+  ai:
+    deepseek:
+      # 没配 key 时自动降级为本地模板文案，不会阻断视频流水线
+      api-key: ${DEEPSEEK_API_KEY:}
+      base-url: https://api.deepseek.com
+      model: deepseek-chat
+
 logging:
   level:
     root: info

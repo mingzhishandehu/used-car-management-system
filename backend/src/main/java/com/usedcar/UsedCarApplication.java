@@ -28,7 +28,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.usedcar.vehicle.mapper",
         "com.usedcar.system.mapper",
         "com.usedcar.pricing.mapper",
-        "com.usedcar.alert.mapper"
+        "com.usedcar.alert.mapper",
+        "com.usedcar.video.mapper"
 })
 @EnableScheduling
 @EnableAsync
