@@ -2,6 +2,8 @@ package com.usedcar.vehicle.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.usedcar.common.ApiResult;
+import com.usedcar.pricing.PricingService;
+import com.usedcar.pricing.dto.VehiclePricingVO;
 import com.usedcar.vehicle.domain.Vehicle;
 import com.usedcar.vehicle.dto.VehicleCostDTO;
 import com.usedcar.vehicle.dto.VehicleCreateDTO;
@@ -34,9 +36,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class VehicleController {
 
     private final VehicleService vehicleService;
+    private final PricingService pricingService;
 
-    public VehicleController(VehicleService vehicleService) {
+    public VehicleController(VehicleService vehicleService, PricingService pricingService) {
         this.vehicleService = vehicleService;
+        this.pricingService = pricingService;
     }
 
     /**
@@ -61,6 +65,16 @@ public class VehicleController {
     @GetMapping("/{id}")
     public ApiResult<VehicleDetailVO> detail(@PathVariable Long id) {
         return ApiResult.ok(vehicleService.detail(id));
+    }
+
+    /**
+     * 定价测算：资金成本、保本底价、阶梯建议价、滞销等级。
+     * 所有参数来自 pricing_rule 表，改表后最迟 30 秒生效，不用重启。
+     */
+    @Operation(summary = "定价测算")
+    @GetMapping("/{id}/pricing")
+    public ApiResult<VehiclePricingVO> pricing(@PathVariable Long id) {
+        return ApiResult.ok(pricingService.calculateByVehicleId(id));
     }
 
     /**

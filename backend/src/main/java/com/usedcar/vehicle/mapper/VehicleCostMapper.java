@@ -6,6 +6,8 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 车辆成本明细的数据访问。
@@ -21,4 +23,24 @@ public interface VehicleCostMapper extends BaseMapper<VehicleCost> {
      */
     @Select("SELECT COALESCE(SUM(amount), 0) FROM vehicle_cost WHERE vehicle_id = #{vehicleId}")
     BigDecimal sumCost(@Param("vehicleId") Long vehicleId);
+
+    /**
+     * 批量取多辆车的成本合计，返回 vehicleId → totalCost。
+     *
+     * 用途：每日巡检要算几百台车，逐台调 sumCost 就是 N+1（几百次往返）。
+     * 一次 GROUP BY 查完，把结果塞进 Map 再逐台算，数据库只往返一次。
+     *
+     * <script> 是 MyBatis 的注解式动态 SQL 写法，等价于 XML 里的 <foreach>。
+     * 空集合会拼出 IN () 导致语法错误，所以调用方必须保证入参非空。
+     */
+    @Select("""
+            <script>
+            SELECT vehicle_id AS vehicleId, COALESCE(SUM(amount), 0) AS total
+            FROM vehicle_cost
+            WHERE vehicle_id IN
+            <foreach collection="vehicleIds" item="id" open="(" separator="," close=")">#{id}</foreach>
+            GROUP BY vehicle_id
+            </script>
+            """)
+    List<Map<String, Object>> sumCostByVehicleIds(@Param("vehicleIds") List<Long> vehicleIds);
 }

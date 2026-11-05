@@ -24,7 +24,12 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 // 显式列出 mapper 所在包，不要写成 "com.usedcar.**.mapper"：
 // @MapperScan 的 basePackages 走的是 Spring 的包扫描，通配符支持不可靠，
 // 写成 ** 有可能一个 Mapper 都注册不上，启动时才在调用处报 NoSuchBeanDefinition。
-@MapperScan({"com.usedcar.vehicle.mapper", "com.usedcar.system.mapper"})
+@MapperScan({
+        "com.usedcar.vehicle.mapper",
+        "com.usedcar.system.mapper",
+        "com.usedcar.pricing.mapper",
+        "com.usedcar.alert.mapper"
+})
 @EnableScheduling
 @EnableAsync
 public class UsedCarApplication {
