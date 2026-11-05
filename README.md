@@ -92,6 +92,18 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080
 - 车辆列表 http://localhost:8080/api/vehicles?page=1&size=10 → 未登录时返回 `code: 401`
 - 接口文档 http://localhost:8080/swagger-ui.html
 
+5. 前端
+
+```bash
+cd frontend
+npm install          # 首次
+npm run dev          # http://localhost:5174
+```
+
+Vite 已把 `/api` 代理到 `http://localhost:8080`，前端代码里只写相对路径，不用管端口和跨域。
+
+页面：登录 → 车辆列表（搜索/分页/收车入库）→ 车辆详情（定价测算 / 成本明细 / 状态流水 / 证件 / AI 短视频）→ 库存预警（处理与手动巡检）。
+
 ## 五个阶段
 
 | 阶段 | 内容 | 验收标准 |
@@ -140,4 +152,5 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080
   启动补偿。实测把进程杀掉重启，卡在 PENDING 的任务被补偿救回并跑完。
 - 阶段 4 完成：DeepSeek 改写文案（无 key 自动降级本地模板）+ mock 图生视频 +
   FFmpeg 字幕烧录与音轨合成，产出真实 mp4。TTS 与真实图生视频仍缺火山引擎 AK/SK。
-- 阶段 5 待做：Vue3 前端。
+- 阶段 5 完成：Vue3 + Vite + Arco Design 前端，四个页面（登录 / 车辆列表 / 车辆详情 / 库存预警），
+  详情页内含定价测算、成本、流水、证件、视频任务五个区块，视频任务前端 3 秒轮询进度。

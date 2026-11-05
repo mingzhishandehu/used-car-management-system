@@ -219,6 +219,18 @@ public class VehicleService {
         return new VehicleDetailVO(vehicle, totalCost, logs);
     }
 
+    /**
+     * 成本明细列表。
+     * 合计给仪表盘和定价用，明细给「这一千二花在哪了」用，两者不能互相替代。
+     */
+    public List<VehicleCost> costs(Long id) {
+        requireVehicle(id);
+        return vehicleCostMapper.selectList(new LambdaQueryWrapper<VehicleCost>()
+                .eq(VehicleCost::getVehicleId, id)
+                .orderByDesc(VehicleCost::getOccurDate)
+                .orderByDesc(VehicleCost::getId));
+    }
+
     // ==================== 内部 ====================
 
     private Vehicle requireVehicle(Long id) {

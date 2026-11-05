@@ -5,6 +5,7 @@ import com.usedcar.common.ApiResult;
 import com.usedcar.pricing.PricingService;
 import com.usedcar.pricing.dto.VehiclePricingVO;
 import com.usedcar.vehicle.domain.Vehicle;
+import com.usedcar.vehicle.domain.VehicleCost;
 import com.usedcar.vehicle.dto.VehicleCostDTO;
 import com.usedcar.vehicle.dto.VehicleCreateDTO;
 import com.usedcar.vehicle.dto.VehicleDetailVO;
@@ -110,5 +111,11 @@ public class VehicleController {
     public ApiResult<Void> addCost(@PathVariable Long id, @Valid @RequestBody VehicleCostDTO dto) {
         vehicleService.addCost(id, dto);
         return ApiResult.ok();
+    }
+
+    @Operation(summary = "成本明细列表")
+    @GetMapping("/{id}/costs")
+    public ApiResult<java.util.List<VehicleCost>> costs(@PathVariable Long id) {
+        return ApiResult.ok(vehicleService.costs(id));
     }
 }
