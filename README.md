@@ -103,9 +103,27 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8080
 | 4 | AI 短视频链路 | 文案改写 → 图生视频 → TTS → 字幕烧录 → 成片，全链路可跑 |
 | 5 | Vue3 前端 | 车辆列表、车辆详情、仪表盘、视频任务进度 |
 
+## 接口清单（已完成）
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/auth/login` | 登录，返回 token |
+| GET | `/api/auth/me` | 当前登录人 |
+| POST | `/api/auth/logout` | 退出登录 |
+| GET | `/api/vehicles` | 分页查询，支持 `keyword` / `status` |
+| GET | `/api/vehicles/{id}` | 详情，含成本合计与状态流水 |
+| POST | `/api/vehicles` | 收车入库 |
+| PUT | `/api/vehicles/{id}` | 修改基础信息（不含金额与状态） |
+| POST | `/api/vehicles/{id}/status` | 状态流转，过状态机校验 |
+| POST | `/api/vehicles/{id}/costs` | 追加成本（整备/运输/过户） |
+
+登录后带请求头 `satoken: <tokenValue>`。初始管理员 `admin / admin123`，由 `DataInitializer` 首次启动时创建。
+
 ## 当前状态
 
-- 阶段 0 骨架已就绪，待建库验证。
+- 阶段 0 完成：13 张表建好，`/api/health` 返回 `tableCount: 13`。
+- 阶段 1 完成：登录鉴权 + 车辆五个写接口 + 五态状态机 + 成本明细 + 状态流水。
+  非法流转实测被拒（跳步、倒流、终态回退、乱传状态值），清库后禁止补录成本。
 - 阶段 4 有前置阻塞：Seedance 图生视频、聆眸数字人、TTS 均需火山引擎 AK/SK，当前没有账号。
   方案：`VideoProvider` 接口抽象，先接 mock 实现产出占位素材，FFmpeg 合成与字幕烧录真实执行；
   拿到 AK/SK 只换实现类，不改架构。
