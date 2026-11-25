@@ -76,8 +76,19 @@ public class Vehicle {
     /** 清库日期 */
     private LocalDate clearDate;
 
-    /** 负责销售，关联 sys_user.id */
+    /** 对接员工，关联 sys_user.id；收车时不指定则由后端填当前登录人 */
     private Long ownerUserId;
+
+    /**
+     * 录入人，关联 sys_user.id。
+     * 只由 VehicleService.create() 从登录态写入，不在任何 DTO 里暴露，
+     * 前端传什么都不影响它——否则能把一辆车记到别人头上。
+     * 升级前录入的历史车辆这里是 NULL，表示当时还没记录归属。
+     */
+    private Long createdBy;
+
+    /** 审批人 sys_user.id；员工申请后由老板批准写入，ADMIN 自己直接录入时为 null */
+    private Long approvedBy;
 
     /** 备注 */
     private String remark;

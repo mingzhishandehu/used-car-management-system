@@ -1,9 +1,9 @@
 -- =============================================================
--- 二手车业务管理与短视频营销系统 —— 建表脚本 V1
+-- 二手车业务管理系统 —— 建表脚本 V1
 -- 数据库：MySQL 8.4
 -- 字符集：utf8mb4 / utf8mb4_0900_ai_ci（8.0 起的默认排序规则，支持 emoji）
--- 共 13 张表，分五组：
---   账号 1 张 / 客户 1 张 / 车辆主体 5 张 / 交易售后 2 张 / 营销与规则 4 张
+-- 共 11 张表，分五组：
+--   账号 1 张 / 客户 1 张 / 车辆主体 5 张 / 交易售后 2 张 / 预警与规则 2 张
 -- 执行方式：
 --   "C:\Program Files\MySQL\MySQL Server 8.4\bin\mysql.exe" -uroot -p < V1__init_schema.sql
 -- =============================================================
@@ -232,64 +232,10 @@ CREATE TABLE `after_sale`
   DEFAULT CHARSET = utf8mb4 COMMENT ='售后记录';
 
 -- -------------------------------------------------------------
--- 第 5 组：营销与规则（4 张）
+-- 第 5 组：预警与规则（2 张）
 -- -------------------------------------------------------------
 
--- 表 10：video_task 视频生成任务（异步任务的核心表）
--- 这张表是整个异步架构的地基，四个字段解决面试必问的四个问题：
---   status         → 服务重启后扫表补偿的依据（status 停在 SUBMITTED/PROCESSING 的就是丢的任务）
---   submit_id      → 上游图生视频返回的任务 ID，轮询用它查进度
---   retry_count    → 失败重试次数，到 3 次转 FAILED，不再无限重试
---   next_poll_at   → 下次轮询时间，避免所有任务同一秒打满上游
--- 唯一键 uk_dedup 防重复提交：同一辆车 + 同一版文案，10 分钟内不许重复下单。
-DROP TABLE IF EXISTS `video_task`;
-CREATE TABLE `video_task`
-(
-    `id`            BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `task_no`       VARCHAR(40)     NOT NULL COMMENT '业务任务号，前缀 VT',
-    `vehicle_id`    BIGINT UNSIGNED NOT NULL COMMENT '关联 vehicle.id',
-    `dedup_key`     VARCHAR(80)     NOT NULL COMMENT '幂等键：vehicle_id + 文案 hash，配合唯一索引防重复提交',
-    `source_text`   TEXT                    NULL COMMENT '原始输入（车辆卖点）',
-    `marketing_copy` TEXT                   NULL COMMENT 'AI 改写后的口播文案',
-    `tts_text`      TEXT                    NULL COMMENT '实际送入 TTS 的文本（含数字读法处理）',
-    `status`        VARCHAR(20)     NOT NULL DEFAULT 'PENDING' COMMENT '状态：PENDING 待提交 / SUBMITTED 已提交 / PROCESSING 生成中 / DOWNLOADING 下载中 / COMPOSING 合成中 / SUCCESS 成功 / FAILED 失败',
-    `provider`      VARCHAR(30)              DEFAULT NULL COMMENT '视频供应商：SEEDANCE / MOCK',
-    `submit_id`     VARCHAR(80)              DEFAULT NULL COMMENT '上游任务 ID，轮询凭证',
-    `video_url`     VARCHAR(500)             DEFAULT NULL COMMENT '上游产物地址',
-    `retry_count`   INT             NOT NULL DEFAULT 0 COMMENT '已重试次数，上限 3',
-    `fail_reason`   VARCHAR(500)             DEFAULT NULL COMMENT '失败原因',
-    `next_poll_at`  DATETIME                 DEFAULT NULL COMMENT '下次轮询时间',
-    `submitted_at`  DATETIME                 DEFAULT NULL COMMENT '提交上游时间，用于算提交超时',
-    `finished_at`   DATETIME                 DEFAULT NULL COMMENT '任务结束时间',
-    `created_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at`    DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_task_no` (`task_no`),
-    UNIQUE KEY `uk_dedup` (`dedup_key`),
-    KEY `idx_status_poll` (`status`, `next_poll_at`),
-    KEY `idx_vehicle_id` (`vehicle_id`)
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4 COMMENT ='视频生成任务（异步）';
-
--- 表 11：video_asset 视频产物
--- 与 video_task 拆开的理由：一次任务可能产出多个文件（无声视频、配音、字幕、成片），
--- 也可能重试后产出多版，全部塞进 video_task 会变成一堆列。
-DROP TABLE IF EXISTS `video_asset`;
-CREATE TABLE `video_asset`
-(
-    `id`          BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '主键',
-    `task_id`     BIGINT UNSIGNED NOT NULL COMMENT '关联 video_task.id',
-    `asset_type`  VARCHAR(20)     NOT NULL COMMENT '产物类型：RAW 上游原始 / AUDIO 配音 / SUBTITLE 字幕文件 / FINAL 成片',
-    `url`         VARCHAR(500)    NOT NULL COMMENT '访问地址（本地相对路径或 CDN）',
-    `duration`    INT                      DEFAULT NULL COMMENT '时长，单位秒',
-    `size_bytes`  BIGINT                   DEFAULT NULL COMMENT '文件大小，单位字节',
-    `created_at`  DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_task_id` (`task_id`)
-) ENGINE = InnoDB
-  DEFAULT CHARSET = utf8mb4 COMMENT ='视频产物';
-
--- 表 12：stock_alert 库存预警
+-- 表 10：stock_alert 库存预警
 -- 作用：把「每天巡检算出来的异常」落成待办，销售登录就能看到该处理哪台车。
 -- 用 uk_vehicle_alert 保证同一台车同类预警在未处理前不重复插入。
 DROP TABLE IF EXISTS `stock_alert`;
@@ -309,7 +255,7 @@ CREATE TABLE `stock_alert`
 ) ENGINE = InnoDB
   DEFAULT CHARSET = utf8mb4 COMMENT ='库存预警';
 
--- 表 13：pricing_rule 定价规则参数
+-- 表 11：pricing_rule 定价规则参数
 -- 这张表是「规则引擎」四个字的落脚点：
 --   代码里不写 8%、5%、2000、45/60/75 这些魔法数字，全部从这张表读。
 --   改规则 = UPDATE 一行数据，不改代码、不重新发版。

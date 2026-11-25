@@ -30,6 +30,12 @@ uploads/
 output/
 temp/
 
+# 数据库备份（含真实数据，不进仓库）
+backups/
+
+# 个人简历（隐私，绝不进仓库）
+简历*.md
+
 # 系统
 .DS_Store
 Thumbs.db

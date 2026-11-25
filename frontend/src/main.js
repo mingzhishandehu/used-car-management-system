@@ -2,6 +2,8 @@ import { createApp } from 'vue'
 import ArcoVue from '@arco-design/web-vue'
 import ArcoVueIcon from '@arco-design/web-vue/es/icon'
 import '@arco-design/web-vue/dist/arco.css'
+// 主题层必须在 arco.css 之后引入：同样特异性的变量与样式规则，后写的赢
+import './styles/theme.css'
 import App from './App.vue'
 import router from './router'
 

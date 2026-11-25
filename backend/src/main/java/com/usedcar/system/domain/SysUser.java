@@ -34,8 +34,15 @@ public class SysUser {
     /** 角色：ADMIN 管理员 / SALES 销售 / FINANCE 财务 */
     private String role;
 
-    /** 1 启用 / 0 停用 */
+    /** 1 启用 / 0 停用，表达「能不能登录」 */
     private Integer status;
+
+    /**
+     * 在职状态：ACTIVE 在任 / LEFT 离职。
+     * 和 status 是两个维度：临时停用的在职员工不能被当成离职。
+     * 办理离职时两个字段一起改，只停用不删账号，历史流水的 operator_id 才不会变孤儿。
+     */
+    private String employmentStatus;
 
     private LocalDateTime createdAt;
 

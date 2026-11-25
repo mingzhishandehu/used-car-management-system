@@ -1,13 +1,14 @@
 package com.usedcar.vehicle.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.usedcar.approval.dto.WriteResult;
+import com.usedcar.approval.service.ApprovalGate;
 import com.usedcar.common.ApiResult;
-import com.usedcar.common.BizException;
 import com.usedcar.pricing.PricingRuleService;
 import com.usedcar.vehicle.domain.VehicleCertificate;
 import com.usedcar.vehicle.dto.VehicleCertificateDTO;
 import com.usedcar.vehicle.mapper.VehicleCertificateMapper;
-import com.usedcar.vehicle.mapper.VehicleMapper;
+import com.usedcar.vehicle.service.CertificateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -36,15 +37,18 @@ import java.util.Map;
 public class CertificateController {
 
     private final VehicleCertificateMapper certificateMapper;
-    private final VehicleMapper vehicleMapper;
     private final PricingRuleService pricingRuleService;
+    private final CertificateService certificateService;
+    private final ApprovalGate approvalGate;
 
     public CertificateController(VehicleCertificateMapper certificateMapper,
-                                 VehicleMapper vehicleMapper,
-                                 PricingRuleService pricingRuleService) {
+                                 PricingRuleService pricingRuleService,
+                                 CertificateService certificateService,
+                                 ApprovalGate approvalGate) {
         this.certificateMapper = certificateMapper;
-        this.vehicleMapper = vehicleMapper;
         this.pricingRuleService = pricingRuleService;
+        this.certificateService = certificateService;
+        this.approvalGate = approvalGate;
     }
 
     @Operation(summary = "某辆车的证件列表")
@@ -56,30 +60,27 @@ public class CertificateController {
                         .orderByAsc(VehicleCertificate::getExpireDate)));
     }
 
-    @Operation(summary = "新增证件")
+    @Operation(summary = "新增证件（员工提交申请）")
     @PostMapping("/vehicles/{vehicleId}/certificates")
-    public ApiResult<Long> create(@PathVariable Long vehicleId,
-                                  @Valid @RequestBody VehicleCertificateDTO dto) {
-        if (vehicleMapper.selectById(vehicleId) == null) {
-            throw new BizException(404, "车辆不存在");
+    public ApiResult<WriteResult> create(@PathVariable Long vehicleId,
+                                         @Valid @RequestBody VehicleCertificateDTO dto) {
+        Long pending = approvalGate.submitIfEmployee("ADD_CERTIFICATE", "MANUAL", vehicleId, dto);
+        if (pending != null) {
+            return ApiResult.ok(WriteResult.pending(pending));
         }
-        VehicleCertificate cert = new VehicleCertificate();
-        cert.setVehicleId(vehicleId);
-        cert.setCertType(dto.certType());
-        cert.setCertNo(dto.certNo());
-        cert.setExpireDate(dto.expireDate());
-        cert.setFileUrl(dto.fileUrl());
-        certificateMapper.insert(cert);
-        return ApiResult.ok(cert.getId());
+        return ApiResult.ok(WriteResult.executed(certificateService.create(vehicleId, dto)));
     }
 
-    @Operation(summary = "删除证件")
+    @Operation(summary = "删除证件（员工提交申请）")
     @DeleteMapping("/certificates/{id}")
-    public ApiResult<Void> delete(@PathVariable Long id) {
-        if (certificateMapper.deleteById(id) == 0) {
-            throw new BizException(404, "证件不存在");
+    public ApiResult<WriteResult> delete(@PathVariable Long id) {
+        Long pending = approvalGate.submitIfEmployee("DELETE_CERTIFICATE", "MANUAL", null,
+                Map.of("certificateId", id));
+        if (pending != null) {
+            return ApiResult.ok(WriteResult.pending(pending));
         }
-        return ApiResult.ok();
+        certificateService.delete(id);
+        return ApiResult.ok(WriteResult.executed(null));
     }
 
     /**

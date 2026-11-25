@@ -15,6 +15,10 @@ import org.apache.ibatis.annotations.Select;
  */
 public interface VehicleMapper extends BaseMapper<Vehicle> {
 
+    /** Lock until the surrounding approval transaction commits. */
+    @Select("SELECT * FROM vehicle WHERE id = #{id} AND deleted = 0 FOR UPDATE")
+    Vehicle selectActiveForUpdate(@Param("id") Long id);
+
     /**
      * 取当天已用的最大库存编号。
      *

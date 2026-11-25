@@ -69,21 +69,28 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
-app:
-  video:
-    # 占位供应商（mock）或真实供应商（seedance，尚未实现）。
-    # mock 会真的用 FFmpeg 生成素材并合成成片，只是"上游素材"是本地造的
-    provider: mock
-    # 产物目录，相对 backend 运行目录
-    work-dir: ./uploads/videos
-    # ffmpeg 可执行文件，装在 PATH 里就写 ffmpeg
-    ffmpeg-path: ffmpeg
+# AI 收车：硅基流动 OpenAI 兼容接口
+# 变量名一律带 USEDCAR_ 前缀，不要用 API_KEY / MODEL 这种大路货：
+# 本机用户级环境变量里已有别的项目的通用变量，Spring Boot 宽松绑定会被旧值顶掉。
+# 密钥不进仓库，只从 .env 注入；没配的后果是调用 AI 时明确报错，不静默降级。
+usedcar:
   ai:
-    deepseek:
-      # 没配 key 时自动降级为本地模板文案，不会阻断视频流水线
-      api-key: ${DEEPSEEK_API_KEY:}
-      base-url: https://api.deepseek.com
-      model: deepseek-chat
+    base-url: ${USEDCAR_AI_BASE_URL:https://api.siliconflow.cn}
+    api-key: ${USEDCAR_AI_API_KEY:}
+    model: ${USEDCAR_AI_MODEL:deepseek-ai/DeepSeek-V4.1-Flash}
+    # siliconflow 走真实模型；mock 用本地关键词解析，仅供没配 Key 时联调前端与写库链路
+    provider: ${USEDCAR_AI_PROVIDER:siliconflow}
+    connect-timeout-ms: 5000
+    read-timeout-ms: 60000
+    # 最近多少条原始消息直接进上下文；更早的靠 summary_text 摘要承接
+    max-history: 12
+    # 一次提问最多几轮工具调用，防模型无限查下去
+    max-tool-rounds: ${USEDCAR_AI_MAX_TOOL_ROUNDS:10}
+    # 优先用 OpenAI tools 协议；模型不支持时关掉即回落自定义 JSON 协议
+    function-calling: true
+    # 未摘要消息超过 24 条触发压缩，一次吃掉最早的 16 条
+    summary-trigger: 24
+    summary-batch: 16
 
 logging:
   level:

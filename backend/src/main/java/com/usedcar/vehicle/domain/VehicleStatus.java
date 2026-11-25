@@ -16,8 +16,8 @@ import java.util.Set;
  *   2. 非法流转会在这里被明确拒绝，而不是靠「大家都记得不能这么改」。
  *   3. 面试问「你怎么保证状态不乱」，答案是「状态机收口在枚举里，流转必须过 canTransitionTo」。
  *
- * 流转图（单向，不能跳过中间态）：
- *   PURCHASED 已收车 → ON_SALE 在售 → SOLD 已成交 → AFTER_SALE 售后 → CLEARED 已清库
+ * 流转图：
+ *   PURCHASED 已收车 → ON_SALE 在售 ↔ SOLD 已成交 → AFTER_SALE 售后 ↔ SOLD 已成交 → CLEARED 已清库
  *
  * 注意：这里只描述「允许的下一步」，具体业务条件（例如「售后未结案不许清库」）
  * 由 Service 层额外校验，枚举只管骨架合法性。
@@ -57,12 +57,13 @@ public enum VehicleStatus {
         map.put(PURCHASED, EnumSet.of(ON_SALE));
         // 在售可以成交；也可以直接清库（例如车况重大事故，转批发处理）
         map.put(ON_SALE, EnumSet.of(SOLD, CLEARED));
+        // 成交撤回后回到在售，允许纠正误成交或订单未成立的情况
+        map.put(SOLD, EnumSet.of(ON_SALE, AFTER_SALE, CLEARED));
         // 成交后可能进售后，也可能客户当场提走无售后，直接清库
-        map.put(SOLD, EnumSet.of(AFTER_SALE, CLEARED));
-        // 售后结案后清库
-        map.put(AFTER_SALE, EnumSet.of(CLEARED));
-        // 清库是终态
-        map.put(CLEARED, Collections.emptySet());
+        // 售后记录有误或问题已撤销时，可退回已成交
+        map.put(AFTER_SALE, EnumSet.of(SOLD, CLEARED));
+        // 清库后只允许按最近状态流水撤回到清库前状态，具体目标由 Service 校验
+        map.put(CLEARED, EnumSet.of(ON_SALE, SOLD, AFTER_SALE));
         ALLOWED = Collections.unmodifiableMap(map);
     }
 

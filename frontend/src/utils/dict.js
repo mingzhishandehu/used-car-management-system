@@ -32,16 +32,6 @@ export const ALERT_LEVEL = {
   DANGER: { text: '严重', color: 'red' }
 }
 
-export const VIDEO_STATUS = {
-  PENDING: { text: '待提交', color: 'gray' },
-  SUBMITTED: { text: '已提交', color: 'arcoblue' },
-  PROCESSING: { text: '生成中', color: 'arcoblue' },
-  DOWNLOADING: { text: '下载中', color: 'arcoblue' },
-  COMPOSING: { text: '合成中', color: 'arcoblue' },
-  SUCCESS: { text: '成功', color: 'green' },
-  FAILED: { text: '失败', color: 'red' }
-}
-
 export const COST_TYPE = {
   PURCHASE: '收车款',
   RECONDITION: '整备',

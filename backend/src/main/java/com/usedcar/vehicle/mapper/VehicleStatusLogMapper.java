@@ -19,4 +19,10 @@ public interface VehicleStatusLogMapper extends BaseMapper<VehicleStatusLog> {
      */
     @Select("SELECT COUNT(*) FROM vehicle_status_log WHERE vehicle_id = #{vehicleId} AND to_status = #{status}")
     int countByStatus(@Param("vehicleId") Long vehicleId, @Param("status") String status);
+
+    /** 读取最近一次状态变更，用于校验撤回清库只能恢复清库前的状态。 */
+    @Select("SELECT id, vehicle_id AS vehicleId, from_status AS fromStatus, to_status AS toStatus, " +
+            "operator_id AS operatorId, remark, created_at AS createdAt " +
+            "FROM vehicle_status_log WHERE vehicle_id = #{vehicleId} ORDER BY id DESC LIMIT 1")
+    VehicleStatusLog selectLatestByVehicleId(@Param("vehicleId") Long vehicleId);
 }

@@ -1,0 +1,558 @@
+/**
+ * 全局设计层：设计令牌 + Arco 组件外观覆盖。
+ *
+ * 只做两件事：
+ *   1. 把颜色、圆角、阴影、间距收敛成一组 CSS 变量，页面里不再写 #165dff 这种散装色值；
+ *   2. 覆盖 Arco 默认的「后台模板感」外观（小圆角、硬边框、灰表格头）。
+ *
+ * 注意 Arco 的颜色变量是 RGB 三元组（"52, 87, 213"），不是 #hex，
+ * 因为它内部按 rgb(var(--primary-6)) 使用；直接塞 hex 会让组件颜色失效。
+ */
+
+:root {
+  /* 主色 ramp：1 最浅 → 10 最深，Arco 的 hover/active 会按下标取色 */
+  --primary-1: 239, 243, 254;
+  --primary-2: 220, 228, 252;
+  --primary-3: 186, 201, 248;
+  --primary-4: 147, 169, 242;
+  --primary-5: 100, 131, 231;
+  --primary-6: 52, 87, 213;
+  --primary-7: 38, 67, 176;
+  --primary-8: 27, 49, 140;
+  --primary-9: 18, 33, 105;
+  --primary-10: 11, 21, 71;
+
+  /* 品牌与中性色 */
+  --uc-ink: #0b1220;
+  --uc-ink-2: #121d33;
+  --uc-primary: #3457d5;
+  --uc-primary-deep: #2643b0;
+  --uc-primary-soft: #eef2fe;
+  --uc-accent: #b8863c;
+  --uc-accent-soft: #fbf3e3;
+  --uc-bg: #f4f5f8;
+  --uc-surface: #ffffff;
+  --uc-surface-2: #fafbfd;
+  --uc-text: #1a2333;
+  --uc-text-2: #5a6577;
+  --uc-text-3: #8b93a5;
+  --uc-border: #e6e9f0;
+  --uc-border-soft: #eff1f6;
+
+  /* 语义色 */
+  --uc-success: #1f8a5b;
+  --uc-success-soft: #e9f7f0;
+  --uc-warning: #b7791f;
+  --uc-warning-soft: #fdf5e6;
+  --uc-danger: #c0392b;
+  --uc-danger-soft: #fdeeec;
+  --uc-violet: #6b4ec9;
+  --uc-violet-soft: #f1edfd;
+
+  /* 形状与投影 */
+  --uc-r-sm: 8px;
+  --uc-r-md: 12px;
+  --uc-r-lg: 16px;
+  --uc-r-xl: 22px;
+  --uc-shadow-1: 0 1px 2px rgba(16, 25, 43, 0.04), 0 10px 26px -20px rgba(16, 25, 43, 0.28);
+  --uc-shadow-2: 0 2px 6px rgba(16, 25, 43, 0.05), 0 18px 40px -24px rgba(16, 25, 43, 0.28);
+  --uc-shadow-pop: 0 12px 32px -12px rgba(16, 25, 43, 0.22);
+
+  /* Arco 圆角收紧 */
+  --border-radius-small: 7px;
+  --border-radius-medium: 10px;
+  --border-radius-large: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--uc-bg);
+  color: var(--uc-text);
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+#app {
+  height: 100%;
+}
+
+/* 滚动条：细一点， hover 才有存在感，避免整页像默认 Windows 控件 */
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d5d9e2;
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b6bccb;
+  background-clip: content-box;
+}
+/* 不写这一条，Chrome 会在自定义滚动条两端画上下箭头按钮，截图里像多余的「›」 */
+::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+/* ---------------- Arco 组件外观 ---------------- */
+
+.arco-btn {
+  border-radius: 9px;
+  font-weight: 500;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.16s ease;
+}
+.arco-btn-size-default {
+  height: 34px;
+  padding: 0 15px;
+}
+.arco-btn-primary:not(.arco-btn-disabled) {
+  box-shadow: 0 8px 18px -12px rgba(52, 87, 213, 0.85);
+}
+.arco-btn-primary:not(.arco-btn-disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 22px -12px rgba(52, 87, 213, 0.9);
+}
+.arco-btn-secondary,
+.arco-btn-outline {
+  border-color: var(--uc-border);
+}
+.arco-btn-text {
+  color: var(--uc-text-2);
+}
+
+.arco-input-wrapper,
+.arco-textarea-wrapper,
+.arco-select-view,
+.arco-picker {
+  border: 1px solid var(--uc-border);
+  border-radius: 9px;
+  background-color: #fff;
+}
+.arco-input-wrapper:hover,
+.arco-select-view:hover,
+.arco-picker:hover {
+  border-color: #c3c9d8;
+}
+.arco-input-wrapper.arco-input-focus,
+.arco-textarea-wrapper.arco-textarea-focus,
+.arco-select-view-focus,
+.arco-picker-focused {
+  box-shadow: 0 0 0 3px rgba(52, 87, 213, 0.12);
+}
+
+/* 禁用态：Arco 默认把文字压到 #c9cdd4，AI 卡片的历史快照会看不清。
+   这里保留「不可编辑」的灰底，但把文字提到可读的次级色。 */
+.arco-input-disabled input,
+.arco-textarea-disabled textarea,
+.arco-picker-disabled input,
+.arco-select-view-disabled .arco-select-view-value,
+.arco-input-disabled .arco-input {
+  color: var(--uc-text-2) !important;
+  -webkit-text-fill-color: var(--uc-text-2);
+  opacity: 1;
+}
+.arco-input-disabled,
+.arco-textarea-disabled,
+.arco-picker-disabled,
+.arco-select-view-disabled {
+  background-color: #f5f7fa;
+}
+
+.arco-card {
+  border-radius: var(--uc-r-lg);
+  border: 1px solid var(--uc-border);
+  box-shadow: var(--uc-shadow-1);
+  background: var(--uc-surface);
+}
+.arco-card-bordered {
+  border: 1px solid var(--uc-border);
+}
+.arco-card-header {
+  padding: 18px 20px 12px;
+  border-bottom: 1px solid var(--uc-border-soft);
+  height: auto;
+}
+.arco-card-header-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--uc-text);
+  letter-spacing: -0.01em;
+}
+.arco-card-body {
+  padding: 20px;
+}
+
+.arco-table-th {
+  background: #fafbfd;
+  color: var(--uc-text-3);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border-bottom: 1px solid var(--uc-border);
+}
+.arco-table-th .arco-table-cell {
+  padding: 11px 16px;
+}
+.arco-table-td {
+  border-bottom: 1px solid var(--uc-border-soft);
+  font-size: 13px;
+  color: var(--uc-text);
+}
+.arco-table-td .arco-table-cell {
+  padding: 13px 16px;
+}
+.arco-table-tr:hover .arco-table-td {
+  background: #f8f9fc;
+}
+.arco-table-pagination {
+  padding: 14px 4px 2px;
+}
+.arco-table-border-cell .arco-table-td {
+  border-right-color: var(--uc-border-soft);
+}
+
+.arco-pagination-item {
+  border-radius: 8px;
+}
+.arco-pagination-item-active {
+  background: var(--uc-primary-soft);
+  color: var(--uc-primary);
+}
+
+.arco-tabs-nav::before {
+  background: var(--uc-border-soft);
+}
+.arco-tabs-tab {
+  font-size: 13px;
+  color: var(--uc-text-2);
+  padding: 0 2px;
+  margin-right: 26px;
+}
+.arco-tabs-tab-active,
+.arco-tabs-tab:hover {
+  color: var(--uc-primary);
+}
+.arco-tabs-nav-ink-bar {
+  height: 2px;
+  border-radius: 2px;
+}
+
+.arco-modal {
+  border-radius: var(--uc-r-lg);
+  box-shadow: var(--uc-shadow-pop);
+  overflow: hidden;
+}
+.arco-modal-header {
+  padding: 20px 22px 6px;
+  border-bottom: none;
+  height: auto;
+}
+.arco-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+.arco-modal-body {
+  padding: 14px 22px 4px;
+}
+.arco-modal-footer {
+  padding: 14px 22px 20px;
+  border-top: none;
+}
+.arco-modal-mask {
+  background: rgba(11, 18, 32, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.arco-dropdown-menu {
+  border-radius: 12px;
+  padding: 6px;
+  box-shadow: var(--uc-shadow-pop);
+  border: 1px solid var(--uc-border);
+}
+.arco-dropdown-option {
+  border-radius: 8px;
+  height: 34px;
+  line-height: 34px;
+  font-size: 13px;
+}
+/* 下拉菜单会被 teleport 到 body，scoped 样式够不到，这条必须放全局 */
+.arco-dropdown-option.danger-option {
+  color: var(--uc-danger);
+}
+.arco-dropdown-option.danger-option:hover {
+  background: var(--uc-danger-soft);
+}
+
+.arco-form-item-label-col > .arco-form-item-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--uc-text-2);
+}
+.arco-form-item {
+  margin-bottom: 16px;
+}
+
+.arco-empty-description {
+  color: var(--uc-text-3);
+  font-size: 13px;
+}
+
+.arco-alert {
+  border-radius: var(--uc-r-md);
+  border: none;
+  font-size: 12.5px;
+}
+
+.arco-descriptions-item-label {
+  font-size: 12px;
+  color: var(--uc-text-3);
+  background: #fafbfd !important;
+}
+.arco-descriptions-item-value {
+  font-size: 13px;
+}
+
+.arco-timeline-item-content {
+  font-size: 13px;
+}
+
+.arco-badge-text {
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* ---------------- 复用工具类 ---------------- */
+
+.uc-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  animation: uc-fade-up 0.32s ease both;
+}
+
+.uc-page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.uc-h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--uc-text);
+  line-height: 1.3;
+}
+.uc-sub {
+  margin: 5px 0 0;
+  font-size: 12.5px;
+  color: var(--uc-text-3);
+  line-height: 1.6;
+}
+.uc-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 状态胶囊统一在这里定义，页面里只加 pill-xxx */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.pill::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+.pill-blue {
+  color: #2f5bd7;
+  background: #eef2fe;
+  border-color: #dfe6fd;
+}
+.pill-green {
+  color: #1a7f52;
+  background: #e9f7f0;
+  border-color: #d7efe4;
+}
+.pill-violet {
+  color: #6b4ec9;
+  background: #f1edfd;
+  border-color: #e6defa;
+}
+.pill-amber {
+  color: #a96b12;
+  background: #fdf5e6;
+  border-color: #f7e7c6;
+}
+.pill-red {
+  color: #b93b2c;
+  background: #fdeeec;
+  border-color: #f8dad5;
+}
+.pill-gray {
+  color: #6b7486;
+  background: #f1f3f7;
+  border-color: #e7e9f0;
+}
+.pill-plain {
+  color: var(--uc-text-2);
+  background: #fff;
+  border-color: var(--uc-border);
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+.money {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  font-weight: 600;
+  color: var(--uc-text);
+  letter-spacing: -0.01em;
+}
+.money .cny {
+  margin-right: 2px;
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--uc-text-3);
+}
+.muted {
+  color: var(--uc-text-3);
+}
+
+.uc-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #4a6ae0, #3457d5);
+  flex: none;
+  user-select: none;
+}
+.uc-avatar.soft {
+  color: var(--uc-primary);
+  background: var(--uc-primary-soft);
+}
+.uc-avatar.sm {
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  font-size: 11px;
+}
+
+.uc-empty {
+  padding: 34px 16px;
+  text-align: center;
+  color: var(--uc-text-3);
+  font-size: 13px;
+}
+.uc-empty .mark {
+  width: 46px;
+  height: 46px;
+  margin: 0 auto 12px;
+  border-radius: 14px;
+  background: var(--uc-primary-soft);
+  color: var(--uc-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uc-tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: #f1f3f7;
+  color: var(--uc-text-3);
+  font-size: 11px;
+  font-weight: 500;
+  vertical-align: 1px;
+}
+
+.uc-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: var(--uc-r-md);
+  background: var(--uc-surface-2);
+  border: 1px dashed var(--uc-border);
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--uc-text-3);
+}
+.uc-note code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: #eef1f7;
+  color: #4b5668;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 11px;
+}
+
+@keyframes uc-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 路由切换 */
+.uc-enter-active,
+.uc-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.uc-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.uc-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}

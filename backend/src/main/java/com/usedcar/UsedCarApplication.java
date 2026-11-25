@@ -18,7 +18,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * @MapperScan 把 mapper 接口注册成 Bean，省掉每个接口上写 @Mapper。
  *
  * @EnableScheduling 打开 @Scheduled，滞销巡检和证件预警靠它定时跑。
- * @EnableAsync      打开 @Async，视频任务提交/轮询靠它丢到线程池。
+ *
+ * @EnableAsync 打开 @Async，会话摘要压缩用它挪到独立线程：
+ * 压缩要调一次模型，放在请求线程里会让老板等好几秒。
+ * 注意 @Async 只对「从别的 Bean 调进来」的方法生效，
+ * 同一个类里自己调自己不走代理，等于同步执行。
  */
 @SpringBootApplication
 // 显式列出 mapper 所在包，不要写成 "com.usedcar.**.mapper"：
@@ -29,7 +33,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
         "com.usedcar.system.mapper",
         "com.usedcar.pricing.mapper",
         "com.usedcar.alert.mapper",
-        "com.usedcar.video.mapper"
+        "com.usedcar.customer.mapper",
+        "com.usedcar.agent.mapper",
+        "com.usedcar.approval.mapper",
+        "com.usedcar.order.mapper"
 })
 @EnableScheduling
 @EnableAsync

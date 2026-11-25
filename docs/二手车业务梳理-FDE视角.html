@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>二手车业务系统梳理 · FDE 视角</title>
+<style>
+  :root{
+    --ink:#1a2233; --ink2:#425066; --ink3:#6b7688;
+    --bg:#ffffff; --panel:#f6f8fb; --line:#dfe4ec;
+    --blue:#2f5fcf; --blue-bg:#eaf1fd;
+    --amber:#9a6b12; --amber-bg:#fdf3e0;
+    --red:#b4392f;  --red-bg:#fdeceb;
+    --green:#2c7a54; --green-bg:#e9f6ef;
+    --purple:#6a4bb0; --purple-bg:#f1ecfa;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"PingFang SC","Microsoft YaHei","Source Han Sans SC",sans-serif;
+    font-size:15px; line-height:1.85; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:48px 32px 96px;}
+  h1{font-size:30px; line-height:1.35; margin:0 0 8px; letter-spacing:.5px;}
+  .sub{color:var(--ink3); font-size:14px; margin-bottom:36px;}
+  h2{
+    font-size:23px; margin:56px 0 6px; padding-top:22px;
+    border-top:2px solid var(--ink); letter-spacing:.5px;
+  }
+  h2 .num{color:var(--blue); font-family:Georgia,serif; margin-right:10px;}
+  h3{font-size:17.5px; margin:32px 0 10px; color:var(--ink);}
+  h4{font-size:15.5px; margin:22px 0 8px; color:var(--ink2);}
+  p{margin:10px 0;}
+  ul,ol{margin:10px 0 10px 22px; padding:0;}
+  li{margin:5px 0;}
+  strong{color:var(--ink); font-weight:650;}
+  code{
+    font-family:Consolas,"Courier New",monospace; font-size:13px;
+    background:#eef1f6; padding:1.5px 5px; border-radius:3px; color:#2b3a55;
+  }
+
+  /* 结论块 */
+  .verdict{
+    background:var(--blue-bg); border-left:4px solid var(--blue);
+    padding:14px 18px; border-radius:0 6px 6px 0; margin:14px 0 18px;
+  }
+  .verdict .tag{
+    display:inline-block; background:var(--blue); color:#fff;
+    font-size:11px; padding:2px 9px; border-radius:10px; margin-bottom:6px;
+    letter-spacing:1px;
+  }
+  .verdict p{margin:4px 0;}
+
+  /* 证据等级标签 */
+  .ev{
+    display:inline-block; font-size:11px; padding:1px 8px; border-radius:9px;
+    font-weight:600; letter-spacing:.5px; vertical-align:middle; margin-right:6px;
+    white-space:nowrap;
+  }
+  .ev-fact{background:var(--green-bg); color:var(--green);}
+  .ev-infer{background:var(--amber-bg); color:var(--amber);}
+  .ev-open{background:var(--red-bg); color:var(--red);}
+  .ev-case{background:var(--purple-bg); color:var(--purple);}
+
+  /* 表格 */
+  table{
+    width:100%; border-collapse:collapse; margin:16px 0 22px;
+    font-size:13.8px; line-height:1.65;
+  }
+  th{
+    background:#eef2f8; text-align:left; padding:9px 12px;
+    border:1px solid var(--line); font-weight:650; color:var(--ink2);
+    font-size:13px;
+  }
+  td{padding:9px 12px; border:1px solid var(--line); vertical-align:top;}
+  tr:nth-child(even) td{background:#fbfcfe;}
+  td.center{text-align:center;}
+  .ok{color:var(--green); font-weight:600;}
+  .no{color:var(--red); font-weight:600;}
+  .warn{color:var(--amber); font-weight:600;}
+
+  /* 公式块 */
+  .formula{
+    background:#f4f7fc; border:1px solid var(--line); border-radius:8px;
+    padding:16px 20px; margin:16px 0;
+  }
+  .formula .fl{
+    font-size:12px; color:var(--ink3); letter-spacing:1px; margin-bottom:8px;
+  }
+  .formula .fb{
+    font-family:Consolas,"Courier New",monospace; font-size:15px;
+    color:var(--ink); line-height:2; letter-spacing:.2px;
+  }
+  .formula .fn{font-size:12.5px; color:var(--ink3); margin-top:8px; line-height:1.7;}
+
+  /* 流程卡片 */
+  .step{
+    border:1px solid var(--line); border-radius:9px; margin:18px 0;
+    overflow:hidden;
+  }
+  .step-h{
+    background:#eef2f8; padding:10px 16px; font-weight:650; font-size:15px;
+    display:flex; align-items:center; gap:10px; border-bottom:1px solid var(--line);
+  }
+  .step-h .idx{
+    background:var(--blue); color:#fff; width:24px; height:24px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:12.5px; flex-shrink:0;
+  }
+  .step-b{padding:12px 18px 14px;}
+  .step-b .row{
+    display:grid; grid-template-columns:88px 1fr; gap:10px;
+    padding:6px 0; border-bottom:1px dashed #e8ecf2; font-size:13.8px;
+  }
+  .step-b .row:last-child{border-bottom:none;}
+  .step-b .k{color:var(--ink3); font-weight:600;}
+  .step-b .bad{color:var(--red);}
+
+  /* 图容器 */
+  .fig{
+    margin:22px 0 26px; padding:18px 10px 10px;
+    background:#fbfcfe; border:1px solid var(--line); border-radius:9px;
+  }
+  .fig-cap{
+    text-align:center; font-size:12.5px; color:var(--ink3);
+    margin-top:8px; line-height:1.7;
+  }
+  .fig svg{display:block; width:100%; height:auto;}
+
+  /* 两列 */
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin:16px 0;}
+  .card{
+    border:1px solid var(--line); border-radius:9px; padding:14px 18px;
+    background:#fff;
+  }
+  .card h4{margin-top:0;}
+
+  /* 脚注 */
+  .src{
+    font-size:12.5px; color:var(--ink3); line-height:1.9;
+    border-top:1px solid var(--line); padding-top:18px; margin-top:50px;
+  }
+  .src a{color:var(--blue); text-decoration:none; word-break:break-all;}
+  .src a:hover{text-decoration:underline;}
+  .toc{
+    background:var(--panel); border:1px solid var(--line); border-radius:9px;
+    padding:16px 22px; margin:22px 0 8px; font-size:14px;
+  }
+  .toc a{color:var(--ink2); text-decoration:none; display:inline-block; margin:3px 18px 3px 0;}
+  .toc a:hover{color:var(--blue);}
+  .hr{height:1px; background:var(--line); margin:34px 0;}
+  .note{
+    background:var(--amber-bg); border-left:4px solid var(--amber);
+    padding:12px 16px; border-radius:0 6px 6px 0; margin:14px 0; font-size:13.8px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>二手车管理与营销系统 · 业务梳理</h1>
+<div class="sub">FDE 视角重构 · 面向软件工程专业学生 · 2026-11-19 · 基于项目真实代码状态与公开行业数据</div>
+
+<div class="toc">
+  <strong>目录</strong><br>
+  <a href="#fix">⓪ 先纠偏：任务书与代码对不上</a>
+  <a href="#p1">① 行业与商业模式</a>
+  <a href="#p2">② 完整业务流程</a>
+  <a href="#p3">③ 业务痛点分析</a>
+  <a href="#p4">④ 核心业务规则</a>
+  <a href="#p5">⑤ AI 应用机会</a>
+  <a href="#p6">⑥ FDE 视角的解决方案</a>
+</div>
+
+<div class="verdict">
+  <div class="tag">全文一句话</div>
+  <p><strong>二手车是一个毛利率 3%~4%、七成经销商在亏损、平均库存 43 天的微利行业。</strong>
+  你这个系统的商业价值不在于"用了 AI"，而在于它能不能帮车商<strong>更快卖掉车、少收错车、算清成本</strong>——
+  在这个行业里，省 1% 成本约等于多赚 25%~33% 的利润。AI 只是其中一节电池，不是发动机。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="fix"><span class="num">〇</span>先纠偏：你的任务书和代码对不上</h2>
+
+<div class="verdict">
+  <div class="tag">结论</div>
+  <p>你写的项目背景里有 <strong>4 处事实性偏差</strong>。业务梳理必须建立在真实现状上，否则后面所有分析都会跑偏——
+  尤其是面试时，对方一追问功能细节就穿帮。</p>
+</div>
+
+<table>
+  <thead><tr><th style="width:32px">#</th><th style="width:230px">你写的</th><th>实际情况（已核对代码）</th><th style="width:200px">证据</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="center">1</td>
+      <td>项目含「营销短视频生成」</td>
+      <td><span class="no">视频模块已彻底删除。</span>FFmpeg 相关代码、<code>video_task</code> / <code>video_asset</code> 表都不在了，<code>backend/</code> 全目录 grep 不到 video / ffmpeg / marketing。</td>
+      <td>仅剩 <code>backups/video_tables_20261109_1647.sql</code> 一个备份文件</td>
+    </tr>
+    <tr>
+      <td class="center">2</td>
+      <td>「通过 AI 工具调用，将提取出的车辆信息写入管理系统」</td>
+      <td><span class="no">口径是错的。</span>模型<strong>没有任何写权限</strong>。模型只输出结构化抽取结果；<code>CreateVehicleTool</code> 这个类由 Java 硬调用，写库唯一入口是 <code>AiIntakeService.confirm()</code> 这个方法。只读路径也受控：<code>ReadonlySqlTool</code> 这个类只放行单条 SELECT。</td>
+      <td><code>agent/tool/</code> 下 <code>ReadonlySqlTool.java</code>、<code>ToolRegistry.java</code></td>
+    </tr>
+    <tr>
+      <td class="center">3</td>
+      <td>「AI 语音或文字录入车辆信息」</td>
+      <td><span class="warn">语音是设想，文字是已实现。</span>现在只有文本对话抽取（<code>AiIntakeView.vue</code> 这个页面）。语音转文字没做。</td>
+      <td><code>frontend/src/views/</code> 共 8 个页面，无语音入口</td>
+    </tr>
+    <tr>
+      <td class="center">4</td>
+      <td>功能清单不区分「已实现 / 已删除 / 设想」</td>
+      <td>三层混在一起。而且你漏了<strong>整个审批流、员工与离职交接、客户订单售后</strong>——这些占了系统近一半工作量。</td>
+      <td>见下方盘点表</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>项目现状盘点（<span class="ev ev-fact">事实</span>）</h3>
+<table>
+  <thead><tr><th style="width:220px">功能</th><th style="width:88px">状态</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>车辆基本信息管理</td><td class="ok">已实现</td><td>车辆列表 + 详情页，五态状态机（收车→在售→锁定→已成交→已清库），状态流转收口在唯一入口</td></tr>
+    <tr><td>车辆收购录入</td><td class="ok">已实现</td><td>手动表单 + AI 文本抽取，入库事务写三张表（车辆 / 成本 / 状态日志）</td></tr>
+    <tr><td>车辆库存管理</td><td class="ok">已实现</td><td>库存编号 <code>UC+yyyyMMdd+3位</code>、库龄、库存预警</td></tr>
+    <tr><td>车辆价格管理</td><td class="ok">已实现</td><td><code>pricing_rule</code> 表 14 个参数驱动，调价走审批；<code>base_price</code> 只在首次挂牌定格</td></tr>
+    <tr><td>AI 文本信息抽取</td><td class="ok">已实现</td><td>两轮 LLM（意图路由 + 结构化抽取），写库走 Java，字段过白名单清洗</td></tr>
+    <tr><td>AI 只读数据查询</td><td class="ok">已实现</td><td>通用受控只读 SQL，14 张业务表白名单 + 敏感列黑名单 + 强制 LIMIT</td></tr>
+    <tr><td>审批流 / 员工 / 离职交接 / 客户订单售后</td><td class="ok">已实现</td><td><strong>不在你清单里</strong>。7 类写操作统一审批、交接只追加留痕、售后未结案拒绝清库</td></tr>
+    <tr><td>营销短视频生成</td><td class="no">已删除</td><td>表和代码均已移除，仅留备份 SQL</td></tr>
+    <tr><td>AI 语音录入</td><td class="no">未实现</td><td>纯设想</td></tr>
+    <tr><td>营销文案生成</td><td class="no">未实现</td><td>纯设想</td></tr>
+    <tr><td>真实支付 / 合同归档 / 短信通知 / 报表导出</td><td class="no">未实现</td><td>面试不要吹这四项</td></tr>
+  </tbody>
+</table>
+
+<div class="note">
+  <strong>另一处任务书本身的混淆：</strong>你的六个部分里，<strong>第一部分（行业常识）和第六部分（FDE 方法论）跟"这个项目"没有直接关系</strong>，
+  它们是通识课。真正跟项目绑定的是第二、三、四、五部分。我照样全写，但你要分清楚哪些是「行业课」、哪些是「项目课」——
+  面试时被问"你项目里哪个环节怎么设计的"，答行业常识是没分的。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p1"><span class="num">一</span>行业与商业模式</h2>
+
+<h3>1.1 二手车商的主要盈利方式</h3>
+<div class="verdict">
+  <div class="tag">结论</div>
+  <p>二手车商赚的<strong>不是单纯的"低买高卖差价"</strong>，而是 <strong>周转效率 × 单车毛利</strong> 的乘积，外加金融保险和增值服务的佣金。
+  同样赚 8000 元，压 15 天的车和压 120 天的车，对老板来说是两门完全不同的生意。</p>
+</div>
+
+<p>四个钱袋子（<span class="ev ev-infer">推测</span>：这是行业公开讨论中常见的利润结构，<strong>不是统一标准</strong>，不同车行占比差别很大）：</p>
+
+<table>
+  <thead><tr><th style="width:150px">钱袋子</th><th style="width:230px">怎么赚</th><th>特点与风险</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>① 车辆购销差价</strong></td>
+      <td>低价收进，整备后高价卖出</td>
+      <td>主要利润来源，但要扣掉整备、资金占用、场地、人力成本。<strong>账面差价 ≠ 真实利润</strong>，这是新手老板最容易算错的地方。</td>
+    </tr>
+    <tr>
+      <td><strong>② 金融/保险佣金</strong></td>
+      <td>帮客户办按揭、代理保险，拿机构返点</td>
+      <td>单台几百到几千元，量大可观。行业利润承压后，这块占比在上升。</td>
+    </tr>
+    <tr>
+      <td><strong>③ 售后与整备</strong></td>
+      <td>质保期内维修、保养、延保、装潢</td>
+      <td>留客 + 复购 + 转介绍。也是客诉高发区。</td>
+    </tr>
+    <tr>
+      <td><strong>④ 增值服务</strong></td>
+      <td>过户代办、上牌、代驾送车、临时牌照</td>
+      <td>金额小，但直接影响成交体验和口碑。</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>1.2 <span class="ev ev-fact">事实</span> 2025 年行业真实经营数据</h3>
+<p>这组数字来自<strong>中国汽车流通协会</strong>（2025 上半年企业营商环境调研 + 2025 全年统计），是全文最重要的事实基础：</p>
+
+<table>
+  <thead><tr><th style="width:250px">指标</th><th style="width:170px">数值</th><th>对系统设计的含义</th></tr></thead>
+  <tbody>
+    <tr><td>2025 全年交易量</td><td><strong>2010.8 万辆</strong>（+2.52%）</td><td>首破 2000 万，市场足够大，不是小众生意</td></tr>
+    <tr><td>2025 全年交易金额</td><td>12897.9 亿元</td><td>客单价约 6.4 万元</td></tr>
+    <tr><td>2025 上半年经销商亏损比例</td><td class="no"><strong>73.6%</strong></td><td><strong>七成同行在亏钱。</strong>你的客户活得很苦，不是"有钱但低效"</td></tr>
+    <tr><td>行业整体毛利率</td><td class="no"><strong>约 3%~4%</strong></td><td>极微利。系统成本敏感度极高</td></tr>
+    <tr><td>百强经销商毛利率（优秀）</td><td class="ok">6%~8%</td><td>做好的能翻倍——差距来自<strong>周转和成本管控</strong>，不是来自"会砍价"</td></tr>
+    <tr><td>平均库存周期</td><td class="warn"><strong>43 天</strong>（2025 年 6 月）</td><td>你的库存预警阈值应以此为参照系，而非拍脑袋</td></tr>
+    <tr><td>库龄 &gt;30 天的企业占比</td><td class="warn">35.6%</td><td>三分之一的企业已经在积压</td></tr>
+    <tr><td>百强优秀企业周转</td><td class="ok">15~20 天</td><td>目标值。差距 2~3 倍</td></tr>
+    <tr><td>平均获客成本</td><td class="no">约 <strong>6200 元</strong></td><td>对比单笔利润仅约 1500 元——<strong>获客已经是亏本买卖</strong></td></tr>
+    <tr><td>单笔交易平均利润</td><td class="no">约 1500 元</td><td>一台车赚 1500，一个错收决定就可能亏 8000</td></tr>
+  </tbody>
+</table>
+
+<div class="verdict">
+  <div class="tag">FDE 必须记住的推论</div>
+  <p>毛利率 3%~4% 时，<strong>成本降 1% ≈ 利润增 25%~33%</strong>。
+  所以这套系统的卖点不该是"我们有 AI"，而该是：<strong>帮你不收错车、不压库、不算错账</strong>。
+  面试时把这句话说出来，比背功能列表有价值得多。</p>
+</div>
+
+<p><span class="ev ev-fact">事实</span> <strong>最大的外部风险是新车价格战。</strong>2022 下半年起燃油与新能源轮番降价，市场上出现过
+"新车指导价低于同款二手车收购价"的倒挂。这意味着<strong>库存车会突然贬值</strong>——压库存不只是占资金，而是<strong>直接亏钱</strong>。
+这是第四部分讲"什么时候该降价"时最重要的前提。</p>
+
+<h3>1.3 二手车交易的完整商业链条</h3>
+
+<div class="fig">
+<svg viewBox="0 0 1400 560" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC,Microsoft YaHei,sans-serif">
+  <defs>
+    <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#2f5fcf"/>
+    </marker>
+  </defs>
+  <!-- 标题 -->
+  <text x="700" y="30" text-anchor="middle" font-size="17" font-weight="700" fill="#1a2233">二手车商业链条：收购侧 → 销售侧</text>
+
+  <!-- Row 1 -->
+  <g font-size="14">
+    <rect x="54" y="62" width="220" height="72" rx="8" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="164" y="93" text-anchor="middle" font-weight="700" fill="#1a2233">车源开发</text>
+    <text x="164" y="115" text-anchor="middle" font-size="11.5" fill="#425066">同行 / 4S置换 / 个人 / 拍卖</text>
+
+    <rect x="322" y="62" width="220" height="72" rx="8" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="432" y="93" text-anchor="middle" font-weight="700" fill="#1a2233">看车验车</text>
+    <text x="432" y="115" text-anchor="middle" font-size="11.5" fill="#425066">漆膜仪 / 内窥镜 / 里程 / 出险</text>
+
+    <rect x="590" y="62" width="220" height="72" rx="8" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="700" y="93" text-anchor="middle" font-weight="700" fill="#1a2233">收购定价</text>
+    <text x="700" y="115" text-anchor="middle" font-size="11.5" fill="#425066">零售价倒推 − 成本 − 风险</text>
+
+    <rect x="858" y="62" width="220" height="72" rx="8" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="968" y="93" text-anchor="middle" font-weight="700" fill="#1a2233">签约付款</text>
+    <text x="968" y="115" text-anchor="middle" font-size="11.5" fill="#425066">合同 / 定金 / 尾款 / 打款审批</text>
+
+    <rect x="1126" y="62" width="220" height="72" rx="8" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="1236" y="93" text-anchor="middle" font-weight="700" fill="#1a2233">提档过户</text>
+    <text x="1236" y="115" text-anchor="middle" font-size="11.5" fill="#425066">车管所 / 临牌 / 异地转籍</text>
+  </g>
+
+  <!-- Row1 arrows -->
+  <g stroke="#2f5fcf" stroke-width="2" fill="none">
+    <line x1="274" y1="98" x2="316" y2="98" marker-end="url(#ah)"/>
+    <line x1="542" y1="98" x2="584" y2="98" marker-end="url(#ah)"/>
+    <line x1="810" y1="98" x2="852" y2="98" marker-end="url(#ah)"/>
+    <line x1="1078" y1="98" x2="1120" y2="98" marker-end="url(#ah)"/>
+    <!-- down to row2 -->
+    <path d="M1236,134 L1236,215 L164,215 L164,294" marker-end="url(#ah)"/>
+  </g>
+  <text x="700" y="207" text-anchor="middle" font-size="11.5" fill="#2f5fcf">车辆转入自有库存</text>
+
+  <!-- Row 2 -->
+  <g font-size="14">
+    <rect x="54" y="300" width="220" height="72" rx="8" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="164" y="331" text-anchor="middle" font-weight="700" fill="#1a2233">整备维修</text>
+    <text x="164" y="353" text-anchor="middle" font-size="11.5" fill="#425066">机械整备 / 洗美 / 费用归集到车</text>
+
+    <rect x="322" y="300" width="220" height="72" rx="8" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="432" y="331" text-anchor="middle" font-weight="700" fill="#1a2233">定价上架</text>
+    <text x="432" y="353" text-anchor="middle" font-size="11.5" fill="#425066">挂牌价 / 拍照视频 / 多渠道分发</text>
+
+    <rect x="590" y="300" width="220" height="72" rx="8" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="700" y="331" text-anchor="middle" font-weight="700" fill="#1a2233">获客带看</text>
+    <text x="700" y="353" text-anchor="middle" font-size="11.5" fill="#425066">线索跟进 / 试驾 / 验车</text>
+
+    <rect x="858" y="300" width="220" height="72" rx="8" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="968" y="331" text-anchor="middle" font-weight="700" fill="#1a2233">谈判成交</text>
+    <text x="968" y="353" text-anchor="middle" font-size="11.5" fill="#425066">报价 / 让利 / 金融 / 收定金</text>
+
+    <rect x="1126" y="300" width="220" height="72" rx="8" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="1236" y="331" text-anchor="middle" font-weight="700" fill="#1a2233">交付售后</text>
+    <text x="1236" y="353" text-anchor="middle" font-size="11.5" fill="#425066">过户 / 交车 / 质保 / 回访转介绍</text>
+  </g>
+
+  <g stroke="#2c7a54" stroke-width="2" fill="none">
+    <line x1="274" y1="336" x2="316" y2="336" marker-end="url(#ah)"/>
+    <line x1="542" y1="336" x2="584" y2="336" marker-end="url(#ah)"/>
+    <line x1="810" y1="336" x2="852" y2="336" marker-end="url(#ah)"/>
+    <line x1="1078" y1="336" x2="1120" y2="336" marker-end="url(#ah)"/>
+  </g>
+
+  <!-- 钱袋子 -->
+  <text x="700" y="422" text-anchor="middle" font-size="14" font-weight="700" fill="#1a2233">四个钱袋子（利润从哪里来）</text>
+  <g font-size="12.5">
+    <rect x="54" y="440" width="310" height="82" rx="8" fill="#fdf3e0" stroke="#9a6b12" stroke-width="1.5"/>
+    <text x="209" y="468" text-anchor="middle" font-weight="700" fill="#1a2233">① 车辆购销差价</text>
+    <text x="209" y="492" text-anchor="middle" fill="#425066">主利润 · 扣整备/资金/场地后才是真利润</text>
+
+    <rect x="390" y="440" width="310" height="82" rx="8" fill="#fdf3e0" stroke="#9a6b12" stroke-width="1.5"/>
+    <text x="545" y="468" text-anchor="middle" font-weight="700" fill="#1a2233">② 金融 / 保险佣金</text>
+    <text x="545" y="492" text-anchor="middle" fill="#425066">按揭返点 · 保险代理 · 量大可观</text>
+
+    <rect x="726" y="440" width="310" height="82" rx="8" fill="#fdf3e0" stroke="#9a6b12" stroke-width="1.5"/>
+    <text x="881" y="468" text-anchor="middle" font-weight="700" fill="#1a2233">③ 售后与整备</text>
+    <text x="881" y="492" text-anchor="middle" fill="#425066">质保维修 · 延保 · 留客复购转介绍</text>
+
+    <rect x="1062" y="440" width="284" height="82" rx="8" fill="#fdf3e0" stroke="#9a6b12" stroke-width="1.5"/>
+    <text x="1204" y="468" text-anchor="middle" font-weight="700" fill="#1a2233">④ 增值服务</text>
+    <text x="1204" y="492" text-anchor="middle" fill="#425066">过户代办 · 上牌 · 装潢 · 送车</text>
+  </g>
+</svg>
+<div class="fig-cap">图 1 · 二手车商业链条。收购侧（蓝）与销售侧（绿）通过「入库」衔接，下方为四类利润来源。<br>
+<span class="ev ev-infer">推测</span> 钱袋子的相对占比因店而异，此处只给结构不给比例。</div>
+</div>
+
+<h3>1.4 二手车商的典型经营角色</h3>
+<div class="verdict">
+  <div class="tag">结论</div>
+  <p>说「二手车商」太笼统。<strong>压不压库存</strong>是分水岭——压库存的才需要你这套库存与定价系统；
+  不压库存的经纪/中介，核心诉求是客户线索管理，完全是另一个产品。</p>
+</div>
+
+<table>
+  <thead><tr><th style="width:180px">角色</th><th style="width:80px">压库存</th><th style="width:180px">主要收入</th><th>典型职责</th></tr></thead>
+  <tbody>
+    <tr><td><strong>自营车商</strong>（车行/车贩子）</td><td class="warn">压</td><td>购销差价</td><td>收车、验车、整备、定价、零售、过户、售后。全流程自己干。</td></tr>
+    <tr><td><strong>经纪 / 中介</strong></td><td class="ok">不压</td><td>佣金 / 信息差</td><td>撮合买卖双方，赚介绍费。不承担跌价风险。</td></tr>
+    <tr><td><strong>二手车经纪公司</strong>（开票主体）</td><td>看情况</td><td>服务费 + 差价</td><td>提供开票、过户、金融通道。可能代售他人车辆。</td></tr>
+    <tr><td><strong>4S 店置换部门</strong></td><td>半压</td><td>促进新车销售 + 批发差价</td><td>旧车抵扣新车款，旧车多批发给车商，自己不零售。</td></tr>
+    <tr><td><strong>拍卖平台</strong>（天天拍车等）</td><td class="ok">不压</td><td>撮合服务费</td><td>组织竞拍，做车况担保，赚服务费。</td></tr>
+    <tr><td><strong>信息平台</strong>（瓜子/懂车帝）</td><td class="ok">不压</td><td>流量 + 服务费</td><td>提供线索、检测、金融。不实际持有车辆。</td></tr>
+  </tbody>
+</table>
+
+<p><span class="ev ev-open">待验证</span> <strong>你的目标客户到底是谁？</strong>
+夫妻店（月销 3~8 台）和连锁店（月销 30+ 台）对系统的要求差一个数量级：
+月销 5 台的店上系统<strong>是负收益</strong>——录入时间比省下的时间还多。这是 FDE 必须敢说的真话，后面第六部分会展开。</p>
+
+<h3>1.5 各角色职责分工（以 3~5 人自营车行为例）</h3>
+<table>
+  <thead><tr><th style="width:120px">角色</th><th style="width:110px">典型人数</th><th>核心职责</th></tr></thead>
+  <tbody>
+    <tr><td><strong>老板</strong></td><td>1</td><td>收车决策拍板、定价拍板、资金调度、大单谈判、对外关系（同行/4S/金融）</td></tr>
+    <tr><td><strong>收车 / 评估</strong></td><td>0~2<br>（常由老板兼）</td><td>找车源、实地验车、谈收车价、办提档过户手续</td></tr>
+    <tr><td><strong>销售</strong></td><td>1~3</td><td>线索跟进、带看试驾、谈价、成交、发内容获客</td></tr>
+    <tr><td><strong>整备</strong></td><td>0~1<br>（常外包）</td><td>洗美、钣金喷漆、机械整备、配件更换</td></tr>
+    <tr><td><strong>内勤 / 财务</strong></td><td>0~1<br>（常老板娘兼）</td><td>过户跑腿、开票、对账、保险、合同归档</td></tr>
+  </tbody>
+</table>
+
+<p><span class="ev ev-infer">推测</span> 这个规模下<strong>一人身兼多职是常态</strong>。对系统设计的直接影响：
+<strong>①权限不能切得太细</strong>（一个人要能干多件事）；<strong>②录入不能太繁琐</strong>（他没耐心填 20 个字段）；
+<strong>③界面必须能用手机</strong>（老板在市场里跑，不在电脑前）。</p>
+
+<h3>1.6 一家小型车商的日常经营活动</h3>
+<p><span class="ev ev-infer">推测</span>（符合公开从业者描述，但不同店差异大）：</p>
+<table>
+  <thead><tr><th style="width:90px">时间</th><th>动作</th><th style="width:270px">背后的真实需求</th></tr></thead>
+  <tbody>
+    <tr><td>9:00</td><td>刷抖音、朋友圈、同行群看车源；回昨晚的微信消息</td><td>信息过载，好车源稍纵即逝</td></tr>
+    <tr><td>10:30</td><td>接电话、约看车，或跑出去看一台车</td><td>时间碎片化，路上消耗大</td></tr>
+    <tr><td>12:00</td><td>带客户看车、试驾</td><td>重复回答同样的问题</td></tr>
+    <tr><td>14:00</td><td>谈价、签单、收定金；或办过户手续</td><td>价格权限、手续材料易漏</td></tr>
+    <tr><td>16:00</td><td>盯库里那几台滞销的，拍板降不降价</td><td>凭感觉，缺依据</td></tr>
+    <tr><td>18:00</td><td>拍视频发抖音，回评论私信</td><td>内容制作耗时且不专业</td></tr>
+    <tr><td>21:00</td><td>对账，算今天赚没赚</td><td>成本漏项，利润算不清</td></tr>
+  </tbody>
+</table>
+
+<div class="verdict">
+  <div class="tag">FDE 关键洞察</div>
+  <p>小车商老板最稀缺的资源是 <strong>时间</strong>，不是数据。
+  系统第一要务是 <strong>省时间</strong>，第二是 <strong>少出错</strong>，第三才是"看得更清楚"（报表）。
+  <strong>别倒着做</strong>——先上 BI 仪表盘是典型的工程师自嗨。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p2"><span class="num">二</span>完整业务流程</h2>
+
+<div class="verdict">
+  <div class="tag">读法</div>
+  <p>下面 11 个环节，每个都按 <strong>谁负责 / 需要什么信息 / 具体做什么 / 产生什么结果 / 可能的异常</strong> 五问拆开。
+  <span class="ev ev-fact">事实</span> 标记的是公开流程中可查证的部分；
+  <span class="ev ev-infer">推测</span> 是合理推断；<span class="ev ev-case">假设案例</span> 是我为说明问题编的数字，<strong>不是真实数据</strong>。</p>
+</div>
+
+<!-- 环节1 -->
+<div class="step">
+  <div class="step-h"><span class="idx">1</span>车辆寻找与收购</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>老板 / 收车人员</div></div>
+    <div class="row"><div class="k">需要信息</div><div>车源线索（品牌、车型、年份、里程、上牌地、期望价）、卖车主联系方式、车辆来源合法性</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 多渠道找车源：同行群、4S 置换、拍卖平台、抖音/闲鱼个人卖家、维修厂转介；② 电话初筛（要行驶证照片，确认车型年份里程）；③ 约时间实地看车</div></div>
+    <div class="row"><div class="k">产出</div><div>一条<strong>车源线索</strong>，进入看车日程</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>车源信息与实车不符（里程虚报、年份错）；车辆有抵押/查封/违章未处理；卖主临时加价或被同行截胡；跨区域提档周期长（异地车源）</div></div>
+  </div>
+</div>
+
+<!-- 环节2 -->
+<div class="step">
+  <div class="step-h"><span class="idx">2</span>车辆检测与评估</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>收车人员 / 评估师（大店有专职，小店老板自己干）</div></div>
+    <div class="row"><div class="k">需要信息</div><div>行驶证、登记证书、VIN 码、维保记录、出险记录、漆膜仪读数、底盘/发动机工况</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 外观漆膜仪测厚（判断钣金喷漆）；② 结构件检查（A/B/C 柱、前后纵梁、备胎槽——判断事故车）；③ 泡水排查（地毯下、线束、安全带根部）；④ 火烧排查；⑤ 里程核验（维保记录 + 电脑读数）；⑥ 试驾判断机械工况；⑦ 查出险与维保记录</div></div>
+    <div class="row"><div class="k">产出</div><div>一份<strong>车况报告</strong>（分级：S/A/B/C 或精品/一般/事故）</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>调表车（里程被调）；精修事故车（结构件修复后漆膜仪读数接近正常）；泡水车清洗后难辨；第三方检测（查博士、268V、维真）与自检结论冲突；隐瞒的改装/改色</div></div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>业务规则争议点：</strong>自检 vs 第三方检测，不同车行做法不同。
+  第三方检测贵（单次几百元）但<strong>可追责</strong>（检测错了可以索赔），适合高价车；
+  自检省钱但风险自担，适合熟手收低价车。<strong>没有统一标准</strong>——这是第四部分定价里"风险准备金"的来源之一。
+</div>
+
+<!-- 环节3 -->
+<div class="step">
+  <div class="step-h"><span class="idx">3</span>收购定价</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>老板拍板（收车人员可给建议价）</div></div>
+    <div class="row"><div class="k">需要信息</div><div>车况报告、同款同年限的<strong>在售挂牌价</strong>、近期<strong>实际成交价</strong>、新车当前优惠价、整备预估成本、自有库存中同类车数量</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>用<strong>零售价倒推法</strong>算出收车价上限，再跟卖主谈判（详见第四部分）</div></div>
+    <div class="row"><div class="k">产出</div><div>一个<strong>收车价上限</strong>（心理底价），以及谈判空间</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>没有同款成交数据（冷门车型）；新车突然降价导致倒推失效；卖主期望价远高于上限；库存里已有同款滞销车但没看就收了</div></div>
+  </div>
+</div>
+
+<!-- 环节4 -->
+<div class="step">
+  <div class="step-h"><span class="idx">4</span>车辆整备</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>整备师傅 / 外包修理厂 + 老板决定整备范围</div></div>
+    <div class="row"><div class="k">需要信息</div><div>车况报告、整备项目清单、每项报价、预期售价（决定整备投入上限）</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① <strong>机械整备</strong>（必做）：油液、刹车、轮胎、异响；② <strong>洗美</strong>（必做）：精洗、内饰除味；③ <strong>外观修复</strong>（可选）：补漆、钣金；④ <strong>深度翻新</strong>（可选）：内饰更换、大灯翻新。<strong>关键是决定"做不做"</strong>——每项都要算边际收益</div></div>
+    <div class="row"><div class="k">产出</div><div>一台可上架的车 + <strong>归集到这台车的整备成本</strong></div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>整备超出预算（拆开发现更多问题）；整备费用散记在别处，算毛利时漏掉；过度整备（花 5000 美容，只多卖 2000）；外包厂工期延误</div></div>
+  </div>
+</div>
+
+<!-- 环节5 -->
+<div class="step">
+  <div class="step-h"><span class="idx">5</span>车辆上架</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>销售 / 老板</div></div>
+    <div class="row"><div class="k">需要信息</div><div>车辆完整档案、成本构成、竞品挂牌价、渠道规则</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 定挂牌价（含议价空间）；② 拍照片/视频；③ 写卖点文案；④ 多渠道分发：抖音、懂车帝、闲鱼、朋友圈、二手车之家、市场摊位</div></div>
+    <div class="row"><div class="k">产出</div><div>多个渠道的<strong>在售挂牌</strong>，开始产生线索</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>文案夸大或隐瞒车况（合规风险：广告法绝对化用语、隐瞒事故）；照片拍得差没曝光；渠道定价不一致导致客户比价后不信任；挂牌价定太高没曝光、定太低亏钱</div></div>
+  </div>
+</div>
+
+<!-- 环节6 -->
+<div class="step">
+  <div class="step-h"><span class="idx">6</span>库存管理</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>老板 / 内勤</div></div>
+    <div class="row"><div class="k">需要信息</div><div>每台车的入库日期、当前状态、成本合计、在库天数、渠道关注量、是否被锁定</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 记录每台车状态流转；② 监控库龄；③ 识别积压车并决策（降价 / 批发 / 继续等）；④ 资金占用分析</div></div>
+    <div class="row"><div class="k">产出</div><div>一份<strong>库存台账</strong> + 积压预警 + 降价/清库决策</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>车辆状态不同步（客户说在，销售说卖了）；"僵尸车"长期无人问津没人发现；资金链紧但不知道该清哪台；同款车压了 3 台互相打架</div></div>
+  </div>
+</div>
+
+<!-- 环节7 -->
+<div class="step">
+  <div class="step-h"><span class="idx">7</span>客户咨询</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>销售</div></div>
+    <div class="row"><div class="k">需要信息</div><div>线索来源、客户联系方式、意向车型、预算、是否置换、是否贷款</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>接电话/微信/平台私信，回答车况价格，判断意向强度，约看车</div></div>
+    <div class="row"><div class="k">产出</div><div>一条<strong>客户线索</strong>（带意向分级），进入跟进流程</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>重复回答同样的问题（低效）；跟错人（同行套价、比价党）；跟进不及时客户流失；报价口径不一致（不同销售报不同价）</div></div>
+  </div>
+</div>
+
+<!-- 环节8 -->
+<div class="step">
+  <div class="step-h"><span class="idx">8</span>客户看车</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>销售</div></div>
+    <div class="row"><div class="k">需要信息</div><div>客户预约时间、意向车辆、车辆当前状态、可试驾条件、价格授权范围</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 到店接待；② 讲解车况与卖点（诚实披露瑕疵）；③ 试驾；④ 让客户验车（可请第三方复检）</div></div>
+    <div class="row"><div class="k">产出</div><div>客户的<strong>购买意向判断</strong>（强/中/弱）+ 报价</div></div>
+    <div class="row"><div class="k bad">常见异常</div><td></td></div>
+    <div class="row"><div class="k bad">（续）</div><div>客户自带评估师发现未披露的瑕疵；车辆已被其他客户锁定但没及时同步；试驾发生事故/违章；客户要求大幅低于底价</div></div>
+  </div>
+</div>
+
+<!-- 环节9 -->
+<div class="step">
+  <div class="step-h"><span class="idx">9</span>价格谈判</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>销售谈，超权限时请示老板</div></div>
+    <div class="row"><div class="k">需要信息</div><div>车辆成本底线、挂牌价、竞品价格、客户预算、可让利项目（送保养/送过户/送质保）、金融方案</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>报价 → 让利试探 → 捆绑增值项 → 逼单。核心是<strong>守住底线</strong>同时<strong>让客户觉得赢了</strong></div></div>
+    <div class="row"><div class="k">产出</div><div>成交价 + 附加条件 + 收定金</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>销售让利超出授权（送质保/送过户成本没算）；定金合同条款不清晰引发纠纷；客户比价后要求"跟XX一样价"；老板在忙联系不上错过成交</div></div>
+  </div>
+</div>
+
+<!-- 环节10 -->
+<div class="step">
+  <div class="step-h"><span class="idx">10</span>车辆成交</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>销售 + 内勤</div></div>
+    <div class="row"><div class="k">需要信息</div><div>买卖双方证件、车辆登记证书、成交价、付款方式、贷款资料、合同条款</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 签购车合同（明确车况披露、质保范围、违约责任）；② 收定金/全款；③ 金融面签（如贷款）；④ 开票</div></div>
+    <div class="row"><div class="k">产出</div><div>一份<strong>销售订单</strong> + 车辆状态变为"已锁定/已成交"</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>金融被拒批（客户征信问题）；合同车况描述与实际不符引发售后纠纷；阴阳合同（违规，严禁）；定金已收但客户反悔扯皮；车辆已被卖给他人（撞单）</div></div>
+  </div>
+</div>
+
+<!-- 环节11 -->
+<div class="step">
+  <div class="step-h"><span class="idx">11</span>交付与售后</div>
+  <div class="step-b">
+    <div class="row"><div class="k">谁负责</div><div>内勤 + 销售 + 整备</div></div>
+    <div class="row"><div class="k">需要信息</div><div>过户材料清单、保险状态、交车检查表、质保条款、客户回访记录</div></div>
+    <div class="row"><div class="k">具体做什么</div><div>① 过户/转籍（车管所）；② 交车检查（油量、备胎、说明书、钥匙数量）；③ 交代质保范围；④ 保险过户/新购；⑤ 7 天后回访；⑥ 请求转介绍</div></div>
+    <div class="row"><div class="k">产出</div><div>车辆状态变为<strong>"已清库"</strong>，成本与收入结清，进入售后闭环</div></div>
+    <div class="row"><div class="k bad">常见异常</div><div>过户材料不全跑多趟；交车后发现未处理违章；售后索赔（质保范围内故障）；客户投诉车况不符；未结案售后就被清库导致账目混乱</div></div>
+  </div>
+</div>
+
+<div class="note">
+  <strong>和你的项目怎么对应：</strong>上面 11 个环节里，你的系统目前覆盖了
+  <strong>①收购录入（部分）、③收购定价（规则表）、④整备成本归集（vehicle_cost 表）、⑥库存管理、⑨价格调整（审批）、⑩成交登记、⑪交付清库</strong>。
+  <strong>完全没覆盖的是：②检测报告、⑤营销内容、⑦⑧客户线索与看车（客户/订单表是轻量实现）</strong>。
+  这个覆盖图就是你下一步该补什么的清单。
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p3"><span class="num">三</span>业务痛点分析</h2>
+
+<div class="verdict">
+  <div class="tag">原则</div>
+  <p>下面只写<strong>真实存在、有据可依</strong>的痛点。<strong>不为体现 AI 价值而制造痛点</strong>——
+  标 <span class="ev ev-open">伪需求</span> 的项，就是行业里被 SaaS 厂商夸大、实际不痛的地方。</p>
+</div>
+
+<h3>3.1 老板视角</h3>
+<table>
+  <thead><tr><th style="width:150px">类别</th><th>痛点</th><th style="width:130px">真实程度</th><th style="width:170px">传统手段够不够</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>最耗时间</strong></td>
+      <td>① 看车源、拍板收不收；② 盯库存拍板降不降价；③ 对账算利润</td>
+      <td class="ok">真实</td>
+      <td class="warn">部分够（Excel）<br>缺的是"一眼看清"</td>
+    </tr>
+    <tr>
+      <td><strong>容易出错</strong></td>
+      <td>① <strong>利润算错</strong>：只算购销差价，漏掉资金成本、场地、人力；② 整备费用散记；③ 收车时没查抵押/查封</td>
+      <td class="ok">真实，且致命</td>
+      <td class="no">不够，需台账</td>
+    </tr>
+    <tr>
+      <td><strong>影响收入</strong></td>
+      <td>① 收贵了卖不动；② 降价时机太晚（库龄 90 天才降）；③ 错失好车源（犹豫 2 小时被同行收走）</td>
+      <td class="ok">真实</td>
+      <td class="warn">需要历史数据支撑</td>
+    </tr>
+    <tr>
+      <td><strong>影响周转</strong></td>
+      <td>① 僵尸车没人提醒；② 同款压多台；③ 资金链紧时不知道清哪台</td>
+      <td class="ok">真实</td>
+      <td class="no">不够，需库存预警</td>
+    </tr>
+    <tr>
+      <td><strong>数字化可改善</strong></td>
+      <td>单车全成本台账（收车价 + 整备 + 资金 + 场地 + 人力摊销）+ 库龄预警 + 简单的降价建议</td>
+      <td class="ok">真实</td>
+      <td>——</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>3.2 收车人员视角</h3>
+<table>
+  <thead><tr><th style="width:150px">类别</th><th>痛点</th><th style="width:130px">真实程度</th><th style="width:170px">传统手段够不够</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>最耗时间</strong></td>
+      <td>① 跑去看车（路上）；② 实车检查（1~2 小时/台）；③ 办手续跑车管所；④ 拍照录信息</td>
+      <td class="ok">真实</td>
+      <td class="no">不够，录入是纯负担</td>
+    </tr>
+    <tr>
+      <td><strong>容易出错</strong></td>
+      <td>① <strong>车况误判</strong>（事故车当好车收，直接亏 1~3 万）；② 调表车没查出来；③ 手续漏查（抵押/查封/逾期未年检）</td>
+      <td class="ok">真实，最痛</td>
+      <td class="warn">靠经验 + 检测清单</td>
+    </tr>
+    <tr>
+      <td><strong>影响收入</strong></td>
+      <td>① 收贵了（给价没依据，凭感觉）；② 收错车型（本地卖不动）</td>
+      <td class="ok">真实</td>
+      <td class="warn">需要成交价参考</td>
+    </tr>
+    <tr>
+      <td><strong>影响周转</strong></td>
+      <td>收车时不看自有库存，同款越收越多</td>
+      <td class="ok">真实</td>
+      <td class="no">不够，需库存联动</td>
+    </tr>
+    <tr>
+      <td><strong>数字化可改善</strong></td>
+      <td>① 标准化验车清单（防漏项）；② 语音/图片快速录入（省 20 分钟/台）；③ 收车时自动提示"你库里已有 2 台同款"</td>
+      <td class="ok">真实</td>
+      <td>——</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>3.3 销售人员视角</h3>
+<table>
+  <thead><tr><th style="width:150px">类别</th><th>痛点</th><th style="width:130px">真实程度</th><th style="width:170px">传统手段够不够</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>最耗时间</strong></td>
+      <td>① 重复回答同样的问题（车况、价格、能不能分期）；② 发朋友圈/抖音内容；③ 跟无效线索（比价党、同行）</td>
+      <td class="ok">真实</td>
+      <td class="warn">话术库 + 模板可解大半</td>
+    </tr>
+    <tr>
+      <td><strong>容易出错</strong></td>
+      <td>① 报价口径不一致（不同销售报不同价）；② 承诺超出权限（送质保/送过户，成本没人算）</td>
+      <td class="ok">真实</td>
+      <td class="no">不够，需权限+话术约束</td>
+    </tr>
+    <tr>
+      <td><strong>影响收入</strong></td>
+      <td>① 跟进不及时丢单（客户等 2 小时没回就走了）；② 逼单缺弹药（不知道还能让多少、能送什么）</td>
+      <td class="ok">真实</td>
+      <td class="warn">跟进提醒可解一半</td>
+    </tr>
+    <tr>
+      <td><strong>影响周转</strong></td>
+      <td><span class="ev ev-open">伪需求</span> 销售个人不直接关心库存周转，这是老板的事。硬套给销售是强加指标。</td>
+      <td class="no">弱/伪</td>
+      <td>——</td>
+    </tr>
+    <tr>
+      <td><strong>数字化可改善</strong></td>
+      <td>① 客户跟进记录（谁在跟、跟到哪一步）；② 标准话术与报价权限；③ 营销内容模板（不是"AI 创作"，是"填空生成"）</td>
+      <td class="ok">真实</td>
+      <td>——</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="verdict">
+  <div class="tag">诚实的结论</div>
+  <p>很多小车商<strong>用 Excel + 微信就能跑</strong>。上系统要满足三个前提中的至少两个：
+  <strong>① 月销 10 台以上；② 多人协作需要留痕；③ 老板要按数据做决策</strong>。
+  三个都不满足的店，上系统是<strong>负收益</strong>——录入时间比省下的时间还多。</p>
+  <p>FDE 必须敢跟老板说这句话。不敢说，就是把项目往失败里推。</p>
+</div>
+
+<h3>3.4 你项目里<b>已经解决</b>的 vs <b>还没碰</b>的</h3>
+<table>
+  <thead><tr><th style="width:110px">视角</th><th>你的系统已解决</th><th>你的系统未解决</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>老板</strong></td>
+      <td>库存台账与库龄、调价审批留痕、单车成本归集、库存预警</td>
+      <td>资金成本计入、批发 vs 零售决策、现金流量预测</td>
+    </tr>
+    <tr>
+      <td><strong>收车</strong></td>
+      <td>快速录入（AI 抽取）、字段强制校验、入库留痕</td>
+      <td>验车清单、车况报告、历史成交价参考、库存联动提示</td>
+    </tr>
+    <tr>
+      <td><strong>销售</strong></td>
+      <td>车辆状态透明（谁锁定的、什么状态）</td>
+      <td>客户跟进、报价权限、话术库、营销内容</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ============================================================ -->
+<h2 id="p4"><span class="num">四</span>核心业务规则</h2>
+
+<div class="verdict">
+  <div class="tag">最重要的一条</div>
+  <p>本部分的<strong>所有阈值都不是行业标准</strong>。二手车没有全国统一的定价公式。
+  行业里真实存在的是<strong>方法论共识</strong>（如"零售价倒推"），而不是<strong>参数共识</strong>（毛利率取多少）。
+  你的项目把参数放进 <code>pricing_rule</code> 表，<strong>这个设计思路本身就是正确的</strong>——
+  因为每家店的参数都该不同。</p>
+</div>
+
+<h3>4.1 车辆收购价格如何确定</h3>
+
+<p><span class="ev ev-fact">事实</span> <strong>零售价倒推法是行业共识方法</strong>（车300、精真估等估值工具，以及多数从业者描述都用这个思路）：</p>
+
+<div class="formula">
+  <div class="fl">收购价上限（零售价倒推法）</div>
+  <div class="fb">
+    收车价上限 = 预计零售价 × (1 − 预期毛利率) − 整备成本 − 资金成本 − 手续成本 − 风险准备金
+  </div>
+  <div class="fn">
+    其中：<strong>预计零售价</strong>参考同款同年限在售挂牌价 + 近期成交价；<strong>预期毛利率</strong>按车型热度与自身经营目标定；
+    <strong>资金成本</strong> = 预计占用金额 × 资金年化成本 × 预计占用天数 / 365；<strong>风险准备金</strong>覆盖车况误判、降价损失、滞销风险。
+  </div>
+</div>
+
+<p><span class="ev ev-case">假设案例</span>（<strong>以下数字为说明问题而设计，不是真实成交</strong>）：</p>
+<table>
+  <thead><tr><th style="width:280px">项目</th><th style="width:140px">金额</th><th>依据</th></tr></thead>
+  <tbody>
+    <tr><td>预计零售价</td><td>¥128,000</td><td>同款在售挂牌 12.8~13.5 万，近期成交 12.5 万</td></tr>
+    <tr><td>− 预期毛利 8%</td><td>−¥10,240</td><td><span class="ev ev-case">假设</span> 该店目标毛利率</td></tr>
+    <tr><td>− 整备成本</td><td>−¥4,500</td><td>补漆 2 处 + 换轮胎 + 精洗</td></tr>
+    <tr><td>− 资金成本</td><td>−¥1,600</td><td>按 11 万 × 年化 8% × 预计 65 天</td></tr>
+    <tr><td>− 手续/过户</td><td>−¥800</td><td>过户费、临牌、跑腿</td></tr>
+    <tr><td>− 风险准备金 2%</td><td>−¥2,560</td><td><span class="ev ev-case">假设</span> 按零售价比例</td></tr>
+    <tr><td><strong>= 收车价上限</strong></td><td><strong>¥108,300</strong></td><td>谈判底价。实际成交争取在 10.2~10.5 万</td></tr>
+  </tbody>
+</table>
+
+<p><span class="ev ev-open">争议点</span> <strong>预期毛利率取多少？</strong>不同做法：</p>
+<ul>
+  <li><strong>固定比例派</strong>：一律 8%~10%。简单但对冷门车/热门车一视同仁，容易错。</li>
+  <li><strong>分档派</strong>：热门准新车 5%~8%，普通车 8%~12%，冷门车/老车 12%~15% 或直接不收。<strong>更合理，但需要历史数据支撑</strong>。</li>
+  <li><strong>目标倒推派</strong>：先定"这台车我要赚多少钱"（比如 8000），再倒推收车价。小店常用，但没考虑周转。</li>
+</ul>
+<p><strong>没有统一答案。</strong>你的系统现在用 <code>pricing_rule</code> 表存参数，<strong>就是承认了这一点</strong>——这是正确设计。</p>
+
+<h3>4.2 车辆销售价格如何确定</h3>
+<p><span class="ev ev-fact">事实</span> 实际是<strong>成本加成 + 市场比价</strong>的结合，不是单一方法：</p>
+<ul>
+  <li><strong>市场比价定天花板</strong>：同款同年限在售挂牌价决定了你挂太高没曝光。</li>
+  <li><strong>成本加成定地板</strong>：低于成本就是亏，除非要清库。</li>
+  <li><strong>挂牌价 ≠ 成交价</strong>：挂牌价通常预留议价空间。</li>
+</ul>
+
+<p><span class="ev ev-case">假设案例</span>（<strong>仅为说明结构</strong>）：收车价 10.8 万 + 整备 0.45 万 + 其他成本 0.25 万 = 成本 11.5 万。
+同款在售挂牌 12.3~13.0 万。挂牌价定 <strong>12.68 万</strong>（留约 3%~5% 议价空间），成交底线 <strong>11.9 万</strong>（保本 11.5 万 + 最低毛利 0.4 万）。</p>
+
+<div class="note">
+  <strong>争议点：</strong>议价空间留多少，各店差异极大。
+  有的店"实价不议"（报价即底价，靠服务取胜）；有的店挂高 10% 让客户砍到底价（迎合"砍价心理"）。
+  <strong>没有对错，只有适不适合你的客群。</strong>线上客（懂车帝、抖音）比价能力强，适合实价；线下熟客适合留空间。
+</div>
+
+<h3>4.3 车辆库存天数如何计算</h3>
+<p><span class="ev ev-fact">事实</span> 行业通用口径：</p>
+<div class="formula">
+  <div class="fl">库存天数</div>
+  <div class="fb">库存天数 = 出库日期 − 入库日期（自然日）</div>
+  <div class="fn">
+    <strong>争议在于"入库"从哪天算起：</strong>
+    ① 收车当天算（最常用，反映真实资金占用）；
+    ② 整备完成上架当天算（反映"可售天数"，但掩盖了整备滞留）；
+    ③ 扣除锁定/预定期（部分店会扣，但会美化数据）。
+    <strong>你的系统目前用收车当天算，这是最保守也最真实的口径，建议保持。</strong>
+  </div>
+</div>
+
+<h3>4.4 库存积压如何识别</h3>
+<p><span class="ev ev-fact">事实</span> 行业参照系：中国汽车流通协会数据显示 <strong>2025 年 6 月行业平均库存周期 43 天</strong>，库龄 &gt;30 天的企业占 35.6%；优秀企业 15~20 天。</p>
+<p><span class="ev ev-infer">推测</span> 积压识别<strong>不需要 AI</strong>，是规则判断。常见规则（<span class="ev ev-case">阈值为示例</span>）：</p>
+<table>
+  <thead><tr><th style="width:170px">信号</th><th style="width:210px">示例阈值</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>库龄超阈值</td><td>&gt; 45 天预警，&gt; 75 天强预警</td><td>你的 <code>pricing_rule</code> 表用的是 45/60/75 天三档，<strong>是演示初始值</strong>，应按门店实际周转调</td></tr>
+    <tr><td>同款重复</td><td>同款在库 ≥ 2 台</td><td>互相打架，后收的先清</td></tr>
+    <tr><td>高占用低关注</td><td>成本占比高 + 30 天零线索</td><td>资金压着但没希望</td></tr>
+    <tr><td>新车降价传导</td><td>同款新车优惠扩大 &gt; 10%</td><td>二手车必然要跟着降，晚降就是亏</td></tr>
+    <tr><td>挂牌价 vs 成交价偏离</td><td>连续 3 周零看车</td><td>价格或车况有问题</td></tr>
+  </tbody>
+</table>
+
+<h3>4.5 什么时候应该降价 / 降多少</h3>
+<p><span class="ev ev-fact">事实</span> 行业普遍做法是<strong>阶梯降价</strong>（跟库龄挂钩），但<strong>具体档位每家不同</strong>：</p>
+
+<p><span class="ev ev-case">假设案例</span>（<strong>以下 3%/8%/13% 是你项目 pricing_rule 表的演示初始值，不是行业标准</strong>）：</p>
+<table>
+  <thead><tr><th style="width:140px">库龄</th><th style="width:140px">降价幅度（累计）</th><th>背后的逻辑</th></tr></thead>
+  <tbody>
+    <tr><td>0~45 天</td><td>不动</td><td>正常销售期，给市场反应时间</td></tr>
+    <tr><td>45~60 天</td><td>降 3%</td><td>进入预警，小幅试探</td></tr>
+    <tr><td>60~75 天</td><td>累计降 8%</td><td>明显积压，加大让利</td></tr>
+    <tr><td>&gt; 75 天</td><td>累计降 13% 或转批发</td><td>零售已无效率，批发回笼资金</td></tr>
+  </tbody>
+</table>
+
+<p><strong>降价幅度还应考虑的因素</strong>（<span class="ev ev-infer">推测</span>，这些是合理因素但各店权重不同）：</p>
+<ul>
+  <li><strong>剩余毛利空间</strong>：降到底线就不能再降，直接批发。</li>
+  <li><strong>新车降价幅度</strong>：新车降 1 万，二手车至少要跟 5000~8000。</li>
+  <li><strong>竞品挂牌价变化</strong>：同款在售车集体降价，你不降就没曝光。</li>
+  <li><strong>资金压力</strong>：现金紧时优先清高占用车，哪怕少赚。</li>
+  <li><strong>季节性</strong>：年前是旺季，可以少降；年后淡季要果断。</li>
+  <li><strong>车型生命周期</strong>：换代车型临近，老款要提前清。</li>
+</ul>
+
+<div class="note">
+  <strong>你的系统当前实现：</strong><code>pricing_rule</code> 表里存了 14 个 key，包括年化率、保本加成、阶梯 45/60/75 天 → 3%/8%/13%。
+  <strong>设计是对的</strong>（参数可配、30 秒热刷新），但<strong>参数值是演示初始值</strong>。
+  面试被问"为什么是 45 天"，正确回答是：「这是演示用的初始值，放进规则表就是为了能按门店调整——
+  行业平均是 43 天，优秀店 15~20 天，具体档位必须按这家店的历史成交数据回测。」
+</div>
+
+<h3>4.6 如何计算单车利润</h3>
+<div class="verdict">
+  <div class="tag">最常算错的地方</div>
+  <p>老板口中的"这台赚了 8000"通常是<strong>毛利</strong>，不是<strong>净利</strong>。
+  算漏资金成本和摊销，是二手车生意"账面赚钱、实际亏钱"的主要原因。</p>
+</div>
+
+<div class="formula">
+  <div class="fl">口径一：单车毛利（你的 expectedProfit 字段用的是这个）</div>
+  <div class="fb">单车毛利 = 成交价 − 收车价 − 整备成本 − 手续/过户成本</div>
+</div>
+<div class="formula">
+  <div class="fl">口径二：单车净利（更接近真实）</div>
+  <div class="fb">单车净利 = 单车毛利 − 资金成本 − 场地/人力摊销 − 营销费用 − 售后索赔准备</div>
+</div>
+
+<p><span class="ev ev-fact">事实</span> <strong>你的代码里存在两套口径，这是一个已知缺口：</strong>
+<code>breakevenPrice</code> 这个字段<strong>这个字段</strong>的计算含 5% 保本加成 + 固定费用，
+而 <code>expectedProfit</code> 这个字段<strong>这个字段</strong>不含，两者不一致。
+<strong>面试要主动交代</strong>，别等人问。这在业务上对应的是"保本价"和"预期利润"本来就该是两个不同的东西，
+但字段命名和口径要能讲清楚。</p>
+
+<p><span class="ev ev-case">假设案例</span>（<strong>说明为什么净利重要</strong>）：</p>
+<table>
+  <thead><tr><th style="width:250px">项目</th><th style="width:150px">A 车</th><th style="width:150px">B 车</th><th>说明</th></tr></thead>
+  <tbody>
+    <tr><td>成交价</td><td>¥128,000</td><td>¥128,000</td><td>同款同年限</td></tr>
+    <tr><td>收车价</td><td>¥118,000</td><td>¥118,000</td><td>相同</td></tr>
+    <tr><td>整备 + 手续</td><td>−¥5,000</td><td>−¥5,000</td><td>相同</td></tr>
+    <tr><td><strong>毛利</strong></td><td><strong>¥5,000</strong></td><td><strong>¥5,000</strong></td><td>看起来一样</td></tr>
+    <tr><td>在库天数</td><td class="ok">18 天</td><td class="no">128 天</td><td>关键差异</td></tr>
+    <tr><td>资金成本（年化 8%）</td><td>−¥460</td><td class="no">−¥3,260</td><td>11.8 万 × 8% × 天数/365</td></tr>
+    <tr><td>场地/人力摊销</td><td>−¥400</td><td>−¥2,840</td><td>按天摊</td></tr>
+    <tr><td><strong>净利</strong></td><td class="ok"><strong>¥4,140</strong></td><td class="no"><strong>−¥1,100</strong></td><td><strong>B 车实际在亏钱</strong></td></tr>
+  </tbody>
+</table>
+<p>这就是为什么<strong>周转和毛利要一起看</strong>。你的系统里 <code>breakevenPrice</code> 含资金相关成本是合理的方向，
+但要把口径讲清楚。</p>
+
+<h3>4.7 如何评估资金周转效率</h3>
+<div class="formula">
+  <div class="fl">三个核心指标</div>
+  <div class="fb">
+    库存周转天数 = 平均库存金额 ÷ 日均销售成本<br>
+    资金周转率 = 年销售成本 ÷ 平均库存资金占用<br>
+    单位资金产出 = 期间总毛利 ÷ 平均库存资金占用
+  </div>
+  <div class="fn">
+    第三个指标最直接：<strong>每压 100 万库存，一年能产出多少毛利</strong>。
+    这是老板真正该盯的数字，比"卖了多少台"重要。
+  </div>
+</div>
+
+<p><span class="ev ev-case">假设案例</span>：A 店平均库存 100 万，年毛利 40 万 → 单位资金产出 <strong>40%</strong>；
+B 店平均库存 200 万，年毛利 45 万 → 单位资金产出 <strong>22.5%</strong>。
+B 店卖得多，但<strong>资金效率低一半</strong>，风险也大一倍（跌价敞口更大）。</p>
+
+<!-- ============================================================ -->
+<h2 id="p5"><span class="num">五</span>AI 应用机会</h2>
+
+<div class="verdict">
+  <div class="tag">先说原则</div>
+  <p><strong>能用规则引擎、数据库查询、Excel 解决的问题，就不要用 AI。</strong>
+  AI 的价值在于处理<strong>非结构化输入</strong>和<strong>生成人类语言</strong>，
+  不在于"算数"和"查表"——那些用 SQL 更准、更快、更便宜、可审计。</p>
+</div>
+
+<div class="fig">
+<svg viewBox="0 0 1200 520" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC,Microsoft YaHei,sans-serif">
+  <!-- 四象限 -->
+  <rect x="120" y="40" width="500" height="210" fill="#e9f6ef" stroke="#cfe6da" stroke-width="1"/>
+  <rect x="620" y="40" width="500" height="210" fill="#eaf1fd" stroke="#c8d9f5" stroke-width="1"/>
+  <rect x="120" y="250" width="500" height="210" fill="#fdf3e0" stroke="#f0ddbc" stroke-width="1"/>
+  <rect x="620" y="250" width="500" height="210" fill="#fdeceb" stroke="#f2cdc9" stroke-width="1"/>
+
+  <!-- 轴标签 -->
+  <text x="620" y="26" text-anchor="middle" font-size="13" fill="#6b7688">AI 适配度 低 ←————————————————→ 高</text>
+  <text x="100" y="150" text-anchor="middle" font-size="13" fill="#6b7688" transform="rotate(-90 100 150)">业务价值 高</text>
+  <text x="100" y="360" text-anchor="middle" font-size="13" fill="#6b7688" transform="rotate(-90 100 360)">业务价值 低</text>
+
+  <!-- 象限标题 -->
+  <text x="370" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#2c7a54">规则引擎 / SQL 优先</text>
+  <text x="370" y="92" text-anchor="middle" font-size="11.5" fill="#425066">价值高，但不该用 AI</text>
+  <text x="870" y="70" text-anchor="middle" font-size="14" font-weight="700" fill="#2f5fcf">AI 真实价值区</text>
+  <text x="870" y="92" text-anchor="middle" font-size="11.5" fill="#425066">价值高，且适合 AI</text>
+  <text x="370" y="280" text-anchor="middle" font-size="14" font-weight="700" fill="#9a6b12">传统手段足够</text>
+  <text x="370" y="302" text-anchor="middle" font-size="11.5" fill="#425066">别为用 AI 而用 AI</text>
+  <text x="870" y="280" text-anchor="middle" font-size="14" font-weight="700" fill="#b4392f">AI 但低价值</text>
+  <text x="870" y="302" text-anchor="middle" font-size="11.5" fill="#425066">炫技区 / 伪需求</text>
+
+  <!-- 散点 -->
+  <g font-size="12.5">
+    <!-- 象限1 规则优先 -->
+    <circle cx="230" cy="140" r="7" fill="#2c7a54"/><text x="246" y="145" fill="#1a2233">库存异常分析</text>
+    <circle cx="230" cy="175" r="7" fill="#2c7a54"/><text x="246" y="180" fill="#1a2233">库龄 / 积压识别</text>
+    <circle cx="230" cy="210" r="7" fill="#2c7a54"/><text x="246" y="215" fill="#1a2233">单车成本核算</text>
+    <circle cx="420" cy="140" r="7" fill="#2c7a54"/><text x="436" y="145" fill="#1a2233">资金周转指标</text>
+
+    <!-- 象限2 AI 真实价值 -->
+    <circle cx="720" cy="130" r="8" fill="#2f5fcf"/><text x="738" y="135" fill="#1a2233">AI 语音/文本录入</text>
+    <circle cx="720" cy="170" r="8" fill="#2f5fcf"/><text x="738" y="175" fill="#1a2233">AI 车辆信息提取</text>
+    <circle cx="720" cy="210" r="8" fill="#2f5fcf"/><text x="738" y="215" fill="#1a2233">AI 营销文案生成</text>
+    <circle cx="940" cy="150" r="8" fill="#2f5fcf"/><text x="958" y="155" fill="#1a2233">AI 定价辅助（给依据）</text>
+
+    <!-- 象限3 传统手段 -->
+    <circle cx="230" cy="340" r="7" fill="#9a6b12"/><text x="246" y="345" fill="#1a2233">客户跟进提醒</text>
+    <circle cx="230" cy="375" r="7" fill="#9a6b12"/><text x="246" y="380" fill="#1a2233">报价权限控制</text>
+    <circle cx="230" cy="410" r="7" fill="#9a6b12"/><text x="246" y="415" fill="#1a2233">验车清单</text>
+
+    <!-- 象限4 伪需求 -->
+    <circle cx="720" cy="350" r="7" fill="#b4392f"/><text x="738" y="355" fill="#1a2233">AI 客户意向打分</text>
+    <circle cx="720" cy="390" r="7" fill="#b4392f"/><text x="738" y="395" fill="#1a2233">AI 经营分析仪表盘</text>
+    <circle cx="720" cy="430" r="7" fill="#b4392f"/><text x="738" y="435" fill="#1a2233">AI 智能客服机器人</text>
+  </g>
+</svg>
+<div class="fig-cap">图 2 · AI 应用价值四象限。<strong>右上角只有 4 项值得做</strong>，左上角要用规则引擎，
+左下角是传统功能，右下角是典型伪需求。<span class="ev ev-infer">推测</span> 位置为相对判断，非精确测量。</div>
+</div>
+
+<h3>5.1 七个方向逐项分析</h3>
+
+<!-- 方向1 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#2f5fcf">★</span>AI 语音录入 —— <span class="ok">高价值，建议做</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>收车人员在市场里跑，打字录入 20 个字段要 15~20 分钟，且容易漏。这是<strong>纯负担</strong>。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>① 回办公室手打；② 微信发给自己再整理；③ 直接不录（数据缺失，事后算账算不清）。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div>对着手机说一段话（"2021年上牌的白色朗逸，跑了4万公里，收车价7万5，今天收的"）→ 自动填入表单 → 人工确认后写库。<strong>录入时间从 15 分钟降到 2 分钟。</strong></div></div>
+    <div class="row"><div class="k">需要数据</div><div>车辆基础字段（品牌/车型/年款/里程/颜色/收车价/收车日期）、车型库（用于规范化名称）</div></div>
+    <div class="row"><div class="k">需要工具</div><div>ASR（语音转文字，如 Whisper / 讯飞 / 硅基流动）、LLM 抽取、车型库查询、车辆表</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① 方言/嘈杂环境识别率下降；② <strong>金额、里程、日期必须人工二次确认</strong>，不能让模型猜（你的 <code>IntakeFieldSpec.sanitize()</code> 就是干这个的）；③ 口语里的"大概""左右"要处理成确定值或标记待确认。</div></div>
+    <div class="row"><div class="k">价值衡量</div><div>单条录入耗时（基线 vs 现状）、字段准确率、日均录入条数、漏录率下降</div></div>
+    <div class="row"><div class="k">现状</div><div><strong>你的项目已实现文本版</strong>（<code>AiIntakeView.vue</code> + 两轮 LLM 抽取 + 字段清洗），语音是同一管线换前端输入源。</div></div>
+  </div>
+</div>
+
+<!-- 方向2 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#2f5fcf">★</span>AI 车辆信息提取 —— <span class="ok">高价值，已实现</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>非结构化描述（"去年买的白色大众，跑得不多，想卖7万多"）转成结构化字段。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>人工阅读理解 + 手动填表，易错易漏。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div>LLM 抽取字段 → 白名单清洗 → 人工确认 → Java 写库。<strong>关键是"人工确认"这一步不能省。</strong></div></div>
+    <div class="row"><div class="k">需要数据</div><div>字段规格（必填/选填/类型/枚举）、车型库</div></div>
+    <div class="row"><div class="k">需要工具</div><div>LLM + 字段校验器 + 车型库 + 车辆表</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① 模型会编造（"大概8万公里"可能被填成 80000，但实际是 8 万多不确定）；② 相对日期（"今天""上周三"）必须在 Java 侧解析，不能交给模型；③ <strong>模型绝不能直接写库</strong>——你的架构（<code>CreateVehicleTool</code> 由 Java 调用、写库唯一入口 <code>AiIntakeService.confirm()</code>）是对的，面试要讲清楚为什么。</div></div>
+    <div class="row"><div class="k">价值衡量</div><div>抽取字段准确率、人工修改率、单条处理时间</div></div>
+    <div class="row"><div class="k">现状</div><div><strong>已实现</strong>，且做了双层防幻觉（路由层条件 SQL + 结果层数字校验）。</div></div>
+  </div>
+</div>
+
+<!-- 方向3 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#2f5fcf">★</span>AI 智能定价辅助 —— <span class="warn">中等价值，谨慎做</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>收车/挂牌定价靠感觉，没依据，收贵了卖不动，卖便宜了亏。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>老板凭经验 + 看几眼同行挂牌价。冷门车型完全没数。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div><strong>先说清楚：真正值钱的是"数据"，不是"AI"。</strong>同款成交价库 + 竞品挂牌监控才是核心资产。AI 的作用是<strong>把数字讲成建议并解释为什么</strong>，而不是"预测价格"。</div></div>
+    <div class="row"><div class="k">需要数据</div><div>① 自有历史成交（越多越好）；② 竞品挂牌价（需爬取或买数据）；③ 新车指导价与优惠；④ 车况系数</div></div>
+    <div class="row"><div class="k">需要工具</div><div>估值数据源（车300/精真估 API）、行情爬取、规则引擎（倒推公式）、LLM（解释生成）</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① 新车突然降价会让模型崩（训练数据里没这个）；② 区域差异大（北京均价 10 万+，三四线 5 万）；③ 车况误判会放大错误；④ 冷门车型样本不足，置信度低。<strong>必须输出"参考区间 + 置信度"，不能输出单点价格。</strong></div></div>
+    <div class="row"><div class="k">价值衡量</div><div>定价与实际成交的偏差、成交周期变化、毛利率变化</div></div>
+    <div class="row"><div class="k">现状</div><div>你的 <code>pricing_rule</code> 表是<strong>规则引擎</strong>（正确的第一步）。LLM 解释层未做。</div></div>
+  </div>
+</div>
+
+<!-- 方向4 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#b4392f">✕</span>AI 库存异常分析 —— <span class="no">大部分是伪需求</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>老板想知道"哪些车该降价了、该清了"。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>Excel 里筛库龄、按价格排序。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div><strong>几乎没有变化。</strong>库龄超阈值、同款重复、高占用低关注——<strong>全是 SQL + 规则判断</strong>，比 AI 更准、更快、可解释、零成本。<br>唯一合理的 AI 用法是：把规则引擎的输出<strong>生成一段给老板看的自然语言周报</strong>（"本周有 3 台超 60 天，建议……"）。那是"写作"，不是"分析"。</div></div>
+    <div class="row"><div class="k">需要数据</div><div>库存表、成本表、线索/关注量表</div></div>
+    <div class="row"><div class="k">需要工具</div><div><strong>SQL + 规则引擎</strong>（主体）+ LLM（仅用于写周报）</div></div>
+    <div class="row"><div class="k bad">局限</div><div>让 AI 直接"分析库存"会产生看似合理但无依据的建议（"建议降价15%"——为什么是 15？）。<strong>不可审计，不能用在钱的决策上。</strong></div></div>
+    <div class="row"><div class="k">价值衡量</div><div>如果只做规则版：积压车识别准确率、预警提前天数。如果加 LLM 周报：老板阅读率。</div></div>
+    <div class="row"><div class="k">现状</div><div>你已有库存预警（规则），<strong>这已经是正确做法</strong>。不要为了"加 AI"改成 LLM 分析。</div></div>
+  </div>
+</div>
+
+<!-- 方向5 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#2f5fcf">★</span>AI 营销文案生成 —— <span class="ok">中高价值，适合小车商</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>小车商不擅长写卖点文案，拍了视频不知道说什么，发抖音没内容。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>① 老板自己憋几句；② 抄同行；③ 干脆不发。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div>输入车辆结构化字段 → 生成多版文案（朋友圈版/抖音口播版/懂车帝版）→ 人工微调发布。<strong>把"要不要发"变成"改一改就发"。</strong></div></div>
+    <div class="row"><div class="k">需要数据</div><div>车辆字段、卖点模板、合规禁用词表、历史高转化文案</div></div>
+    <div class="row"><div class="k">需要工具</div><div>LLM + 模板库 + 敏感词过滤</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① <strong>合规风险大</strong>：广告法禁绝对化用语（"最""第一"）、<strong>隐瞒车况是违法的</strong>（事故车必须披露）；② 同质化严重（所有 AI 文案长一个样）；③ 价值天花板低——是效率工具，不是决策工具。<strong>必须过敏感词过滤 + 人工确认</strong>，不能直接发布。</div></div>
+    <div class="row"><div class="k">价值衡量</div><div>发布频次、单条制作时长、留资量、成交归因</div></div>
+    <div class="row"><div class="k">现状</div><div>未实现（且营销短视频模块已删除）。<strong>如果重做，建议只做文案不做视频</strong>——视频生成成本高、质量不稳，文案投入产出比更好。</div></div>
+  </div>
+</div>
+
+<!-- 方向6 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#b4392f">✕</span>AI 客户意向分析 —— <span class="no">争议大，多数场景是伪需求</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>销售想知道"哪个客户更可能买"，优先跟进。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>销售自己心里有数（谁问得细、谁来看过两次、谁问了分期）。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div><strong>诚实说：小店场景下几乎没有提升。</strong>月销 5 台、客户 20 个，销售自己门儿清。<br>只有<strong>多销售、线索量大</strong>时才有意义，而且那更适合用<strong>规则打标签</strong>（问了分期=高意向，只问价格=比价党）。</div></div>
+    <div class="row"><div class="k">需要数据</div><div>聊天记录、通话记录、看车记录、跟进历史。<strong>聊天记录获取涉及隐私合规，这是硬门槛。</strong></div></div>
+    <div class="row"><div class="k">需要工具</div><div>IM 接口、LLM、CRM</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① 隐私合规风险（读客户聊天记录）；② 样本量小模型不准；③ 销售抵触（觉得被监控）；④ 解释不通（"为什么给我打 60 分"）。</div></div>
+    <div class="row"><div class="k">价值衡量</div><div>高意向识别准确率、跟进转化率提升。<strong>但如果基线本来就高（销售自己判断准），提升空间是 0。</strong></div></div>
+    <div class="row"><div class="k">建议</div><div>做<strong>线索打标签 + 跟进提醒</strong>（规则），不做意向打分（AI）。</div></div>
+  </div>
+</div>
+
+<!-- 方向7 -->
+<div class="step">
+  <div class="step-h"><span class="idx" style="background:#9a6b12">~</span>AI 经营数据分析 —— <span class="warn">有价值，但方向容易做歪</span></div>
+  <div class="step-b">
+    <div class="row"><div class="k">解决什么</div><div>老板要的不是"报表"，是<strong>"哪台车该降价了、这个月现金够不够、上个月为什么亏"</strong>。</div></div>
+    <div class="row"><div class="k">原来怎么做</div><div>月底拿计算器按，或让会计出个表。</div></div>
+    <div class="row"><div class="k">AI 后变化</div><div><strong>数据本身用 SQL 出，AI 负责把数字讲成人话。</strong>比如：「本月毛利 4.2 万，但其中 1.8 万来自一台压了 96 天的车，扣掉资金成本实际是亏的。建议……」<br><strong>不要做"AI 仪表盘"</strong>——那是把 BI 换了个名字。</div></div>
+    <div class="row"><div class="k">需要数据</div><div>车辆、成本、订单、售后、资金流水</div></div>
+    <div class="row"><div class="k">需要工具</div><div>SQL + 规则引擎（算指标）+ LLM（写解读）</div></div>
+    <div class="row"><div class="k bad">局限</div><div>① 指标口径必须先定死（毛利还是净利？），否则 AI 会混用；② 小样本下结论不稳（一个月卖 3 台，谈"趋势"没意义）；③ 容易做成炫技 BI，老板不看。</div></div>
+    <div class="row"><div class="k">价值衡量</div><div>老板实际查看率、基于报告做出的决策数、库存周转改善</div></div>
+    <div class="row"><div class="k">现状</div><div>你有 Dashboard（ECharts）。<strong>建议加一层"结论解读"，而不是加更多图表。</strong></div></div>
+  </div>
+</div>
+
+<div class="verdict">
+  <div class="tag">第五部分结论</div>
+  <p>七个方向里，<strong>真正值得投入 AI 的只有 2~3 个</strong>：语音/文本录入（已做）、信息提取（已做）、营销文案（值得做）。
+  定价辅助是"数据为主、AI 为辅"；库存分析和客户意向分析<strong>大部分是伪需求</strong>。
+  <strong>面试时敢说"这个不该用 AI"，比说"我用 AI 做了 7 个功能"有说服力得多。</strong></p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="p6"><span class="num">六</span>FDE 视角的解决方案</h2>
+
+<div class="verdict">
+  <div class="tag">FDE 是什么</div>
+  <p><strong>Forward Deployed Engineer（前沿部署工程师）</strong>：不是坐在后方写代码的工程师，
+  而是<strong>驻扎在客户业务现场，把模糊的业务问题变成能上线、能验证、客户真的会用的系统</strong>的人。
+  这个角色由 Palantir 开创，现在 OpenAI、Anthropic、Google Cloud、Stripe 都在招。</p>
+  <p>考核标准只有一条：<strong>你建的系统是不是在客户那里跑着，真的在产生价值。</strong>
+  而不是"你用了多牛的技术"。</p>
+</div>
+
+<p><span class="ev ev-fact">事实</span> FDE 的工作范围（来自岗位描述与行业资料）：</p>
+<ul>
+  <li><strong>发现与定义</strong>：识别业务问题，定义可衡量的成功标准</li>
+  <li><strong>构建与集成</strong>：写生产代码，接客户的真实（通常是混乱的）数据和系统</li>
+  <li><strong>部署与上线</strong>：过安全审查、配权限、和客户团队一起 go-live</li>
+  <li><strong>生产负责</strong>：监控、排障、推动实际使用（<strong>没人用 = 失败</strong>）</li>
+  <li><strong>反向反馈</strong>：把现场经验带回产品团队，变成通用能力</li>
+</ul>
+
+<h3>6.1 如何开展需求调研</h3>
+<div class="verdict">
+  <div class="tag">最重要的一句话</div>
+  <p><strong>跟岗一整天，比问 100 个问题有用。</strong>看真实的单据、微信聊天记录、Excel 表——
+  <strong>系统外的证据才是真相</strong>。客户嘴上说的流程和实际做的，几乎永远不一样。</p>
+</div>
+
+<table>
+  <thead><tr><th style="width:130px">手段</th><th>具体做法</th><th style="width:210px">为什么有效</th></tr></thead>
+  <tbody>
+    <tr><td><strong>跟岗观察</strong></td><td>跟着收车人员跑一天，跟着销售带一次看车</td><td>看到真实动作，不是"理想流程"</td></tr>
+    <tr><td><strong>查系统外证据</strong></td><td>要他们的 Excel 台账、微信记录、纸质合同、收车单</td><td>Excel 的列名就是他们真正在意的数据</td></tr>
+    <tr><td><strong>问具体事件</strong></td><td>"上一台车从进店到卖出，发生了什么？"而不是"你们流程是什么"</td><td>具体案例不会撒话</td></tr>
+    <tr><td><strong>分角色单独聊</strong></td><td>老板、一线、内勤<strong>分开问</strong></td><td>三个人对同一件事的说法会不一样，差异点就是痛点</td></tr>
+    <tr><td><strong>找最近的失败</strong></td><td>"最近一次亏钱是什么时候？为什么？"</td><td>失败案例比成功案例信息量大</td></tr>
+  </tbody>
+</table>
+
+<h3>6.2 向老板提什么问题</h3>
+<div class="verdict">
+  <div class="tag">反模式</div>
+  <p>不要问 <strong>"您有什么痛点？"</strong>——老板会说"都挺好的"或给你一堆假大空的答案。
+  要问<strong>能用数字回答的具体问题</strong>。</p>
+</div>
+
+<ol>
+  <li>上个月卖了几台？<strong>哪几台亏了？为什么？</strong></li>
+  <li>现在库里<strong>最久的一台多少天</strong>了？为什么还没卖？</li>
+  <li>你每天<strong>花时间最多</strong>的三件事是什么？</li>
+  <li>如果只能改善一件事，<strong>是哪件？</strong></li>
+  <li>你现在用什么记账？（Excel / 微信 / 本子 / 脑子）——<strong>让他打开给你看</strong></li>
+  <li>你上一次<strong>因为信息不准做错决定</strong>是什么时候？</li>
+  <li>你店里<strong>谁最离不开</strong>？他不在会怎样？（暴露单点依赖）</li>
+  <li>月销多少台？（<strong>决定要不要做这个项目</strong>）</li>
+</ol>
+
+<h3>6.3 如何梳理业务流程</h3>
+<ol>
+  <li><strong>画现状图（as-is）</strong>：照实画，包括微信、口头、纸质这些"不规范"的动作。<strong>不要美化。</strong></li>
+  <li><strong>找断点</strong>：信息在哪一步丢的？责任在哪一步糊的？钱在哪一步算错的？</li>
+  <li><strong>画目标图（to-be）</strong>：只改断点，不要推倒重来。改动越大，落地阻力越大。</li>
+  <li><strong>用真实单据验证</strong>：拿一张真实收车单，走一遍你的 to-be 流程，看卡在哪。</li>
+  <li><strong>区分"必须留痕"和"顺手做"</strong>：前者强制，后者可选。<strong>把所有动作都强制留痕 = 落地失败。</strong></li>
+</ol>
+
+<h3>6.4 如何确定项目优先级</h3>
+<p>用<strong>价值 × 成本 × 落地阻力</strong>三维（比标准的 RICE 多一个"阻力"维度，因为 ToB 落地阻力是主要死因）：</p>
+
+<table>
+  <thead><tr><th style="width:70px">优先级</th><th style="width:230px">内容</th><th>为什么</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="ok"><strong>P0</strong></td>
+      <td>省时间 + 留痕 + 少出错<br>（收车录入、库存台账、审批留痕、单车成本）</td>
+      <td>直接对应老板/一线最痛的三件事。见效快，阻力小。<strong>你的项目现在做的就是这一层，方向是对的。</strong></td>
+    </tr>
+    <tr>
+      <td class="warn"><strong>P1</strong></td>
+      <td>提收入<br>（定价参考、库存预警、营销内容、客户跟进）</td>
+      <td>需要数据积累，见效慢，但天花板高。要等 P0 用起来有数据了再做。</td>
+    </tr>
+    <tr>
+      <td class="no"><strong>P2</strong></td>
+      <td>锦上添花<br>（智能问答、经营分析仪表盘、意向打分）</td>
+      <td>听起来高级，实际使用率低。<strong>不要在 P0 没跑通时碰这些。</strong></td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>6.5 如何设计技术方案</h3>
+<ul>
+  <li><strong>从"最小可用流程"开始</strong>：一台车从收进到卖出的完整闭环，先跑通，再加分支。<strong>不要做大而全。</strong></li>
+  <li><strong>规则必须可配置</strong>：阈值（库龄、毛利率、降价档位）绝不硬编码。你项目里的 <code>pricing_rule</code> 表就是正确示范。</li>
+  <li><strong>权限与留痕是刚需，不是"锦上添花"</strong>：二手车行业多人协作、涉及钱和车况争议，出事要能查到谁在什么时候做了什么。你的审批流、状态日志、离职交接只追加留痕——这些在 ToB 场景是<strong>卖点</strong>。</li>
+  <li><strong>AI 必须人在环路（human-in-the-loop）</strong>，尤其是写操作。你的设计（模型只输出结构化结果、写库走 Java、人工确认）是对的，<strong>面试要主动讲这个取舍</strong>。</li>
+  <li><strong>技术栈宁旧勿新</strong>：客户要的是能跑十年，不是技术先进性。Spring Boot + MySQL + Vue 完全够。</li>
+</ul>
+
+<h3>6.6 如何推动系统落地</h3>
+<ol>
+  <li><strong>找一个愿意配合的门店做试点</strong>，不要一次上所有店。</li>
+  <li><strong>数据冷启动</strong>：前 2 周你或你的对接人<strong>手工代录</strong>，让用户先看价值，再学录入。<strong>反过来一定失败。</strong></li>
+  <li><strong>统一口径</strong>：什么叫"已成交"？利润算毛利还是净利？<strong>先把这些定义写死</strong>，否则报表永远对不上。</li>
+  <li><strong>培训要短</strong>：每次 15 分钟，只教当前要用的功能。<strong>一次教 20 个功能 = 一个都记不住。</strong></li>
+  <li><strong>给老板看"省了多少时间/少亏了多少"</strong>，不要看功能清单。<strong>老板不关心技术。</strong></li>
+  <li><strong>留一个"回退通道"</strong>：允许部分场景继续用 Excel，强制 100% 切换通常失败。</li>
+</ol>
+
+<h3>6.7 如何验证项目效果</h3>
+<div class="verdict">
+  <div class="tag">核心原则</div>
+  <p><strong>先测基线，再谈提升。</strong>没有基线的"提升了 30%"是骗人的。
+  北极星指标必须<strong>跟钱挂钩</strong>，不要用"日活""活跃度"这类虚荣指标。</p>
+</div>
+
+<table>
+  <thead><tr><th style="width:170px">指标</th><th style="width:230px">基线（上线前测）</th><th style="width:130px">观察周期</th><th>为什么重要</th></tr></thead>
+  <tbody>
+    <tr><td>单车录入耗时</td><td>实测 3 台取平均</td><td>即时</td><td>最直接的效率指标</td></tr>
+    <tr><td>库存周转天数</td><td>过去 3 个月平均</td><td>30/60/90 天</td><td>行业均值 43 天，优秀 15~20 天</td></tr>
+    <tr><td>单车净利率</td><td>过去 3 个月平均</td><td>60/90 天</td><td>比"卖了多少台"重要</td></tr>
+    <tr><td>积压车占比</td><td>当前库龄&gt;60 天的台数占比</td><td>30/60 天</td><td>预警是否真的提前了</td></tr>
+    <tr><td>录入完整率</td><td>当前漏录字段比例</td><td>30 天</td><td>数据质量决定一切上层应用</td></tr>
+    <tr><td>功能实际使用率</td><td>—</td><td>30 天</td><td><strong>没人用 = 项目失败</strong>，这是 FDE 的生死线</td></tr>
+  </tbody>
+</table>
+
+<div class="fig">
+<svg viewBox="0 0 1200 300" xmlns="http://www.w3.org/2000/svg" font-family="PingFang SC,Microsoft YaHei,sans-serif">
+  <defs>
+    <marker id="ah2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <path d="M0,0 L9,4.5 L0,9 Z" fill="#2f5fcf"/>
+    </marker>
+  </defs>
+  <text x="600" y="30" text-anchor="middle" font-size="17" font-weight="700" fill="#1a2233">FDE 交付五阶段</text>
+
+  <g font-size="13">
+    <rect x="30" y="60" width="205" height="115" rx="9" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="132" y="88" text-anchor="middle" font-weight="700" fill="#1a2233">① 发现</text>
+    <text x="132" y="112" text-anchor="middle" font-size="11.5" fill="#425066">跟岗观察</text>
+    <text x="132" y="132" text-anchor="middle" font-size="11.5" fill="#425066">看真实单据</text>
+    <text x="132" y="152" text-anchor="middle" font-size="11.5" fill="#425066">定义成功指标</text>
+
+    <rect x="265" y="60" width="205" height="115" rx="9" fill="#eaf1fd" stroke="#2f5fcf" stroke-width="1.5"/>
+    <text x="367" y="88" text-anchor="middle" font-weight="700" fill="#1a2233">② 构建集成</text>
+    <text x="367" y="112" text-anchor="middle" font-size="11.5" fill="#425066">写生产代码</text>
+    <text x="367" y="132" text-anchor="middle" font-size="11.5" fill="#425066">接真实数据</text>
+    <text x="367" y="152" text-anchor="middle" font-size="11.5" fill="#425066">先跑通最小闭环</text>
+
+    <rect x="500" y="60" width="205" height="115" rx="9" fill="#e9f6ef" stroke="#2c7a54" stroke-width="1.5"/>
+    <text x="602" y="88" text-anchor="middle" font-weight="700" fill="#1a2233">③ 部署上线</text>
+    <text x="602" y="112" text-anchor="middle" font-size="11.5" fill="#425066">权限 / 安全审查</text>
+    <text x="602" y="132" text-anchor="middle" font-size="11.5" fill="#425066">试点门店</text>
+    <text x="602" y="152" text-anchor="middle" font-size="11.5" fill="#425066">数据冷启动</text>
+
+    <rect x="735" y="60" width="205" height="115" rx="9" fill="#fdf3e0" stroke="#9a6b12" stroke-width="1.5"/>
+    <text x="837" y="88" text-anchor="middle" font-weight="700" fill="#1a2233">④ 生产负责</text>
+    <text x="837" y="112" text-anchor="middle" font-size="11.5" fill="#425066">监控 / 排障</text>
+    <text x="837" y="132" text-anchor="middle" font-size="11.5" fill="#425066">推动真实使用</text>
+    <text x="837" y="152" text-anchor="middle" font-size="11.5" fill="#425066">30/60/90 天复盘</text>
+
+    <rect x="970" y="60" width="205" height="115" rx="9" fill="#f1ecfa" stroke="#6a4bb0" stroke-width="1.5"/>
+    <text x="1072" y="88" text-anchor="middle" font-weight="700" fill="#1a2233">⑤ 反向反馈</text>
+    <text x="1072" y="112" text-anchor="middle" font-size="11.5" fill="#425066">现场经验 → 产品</text>
+    <text x="1072" y="132" text-anchor="middle" font-size="11.5" fill="#425066">沉淀通用方案</text>
+    <text x="1072" y="152" text-anchor="middle" font-size="11.5" fill="#425066">降低下个客户成本</text>
+  </g>
+
+  <g stroke="#2f5fcf" stroke-width="2" fill="none">
+    <line x1="235" y1="117" x2="259" y2="117" marker-end="url(#ah2)"/>
+    <line x1="470" y1="117" x2="494" y2="117" marker-end="url(#ah2)"/>
+    <line x1="705" y1="117" x2="729" y2="117" marker-end="url(#ah2)"/>
+    <line x1="940" y1="117" x2="964" y2="117" marker-end="url(#ah2)"/>
+    <path d="M1072,175 L1072,240 L132,240 L132,181" stroke-dasharray="6,4" marker-end="url(#ah2)"/>
+  </g>
+  <text x="600" y="262" text-anchor="middle" font-size="12" fill="#2f5fcf">反馈闭环：⑤ 的经验回流到 ①，成为下一轮（或下个客户）的起点</text>
+</svg>
+<div class="fig-cap">图 3 · FDE 交付五阶段与反馈闭环。前两阶段占 60% 精力，但多数人把时间花在 ③。</div>
+</div>
+
+<h3>6.8 如果我是 FDE，面对这家二手车公司</h3>
+<p>把上面的方法套进你的项目，顺序应该是：</p>
+<ol>
+  <li><strong>先去看 3 家真实车行</strong>，跟岗各一天。看完再决定做什么。<strong>现在你的项目是"按设想做的"，不是"按真实需求做的"</strong>——这是它和 FDE 项目的根本差距。</li>
+  <li><strong>测基线</strong>：现在录入一台车多久？库里几台超 60 天？上个月有几台亏？</li>
+  <li><strong>只做 P0</strong>：收车录入、库存台账、审批留痕、单车成本。<strong>这一层你的项目已经基本做好了。</strong></li>
+  <li><strong>试点一家店，跑 30 天</strong>，只看两个数：录入耗时降了多少、积压车提前几天被发现。</li>
+  <li><strong>数据够了再做 P1</strong>（定价参考、营销文案）。</li>
+  <li><strong>P2 的智能问答（你已做）要重新定位</strong>：它不是"卖点"，是"录入的辅助"。别当主功能推。</li>
+</ol>
+
+<div class="verdict">
+  <div class="tag">FDE 的心法</div>
+  <p>AI 是手段，不是目的。
+  FDE 的价值<strong>不是"我会用大模型"</strong>，而是
+  <strong>"我敢说这个问题不该用大模型，并且能证明用 SQL 更好"</strong>。
+  你在这份文档第五部分敢把"库存分析""意向打分"标成伪需求，
+  这个判断力本身就是 FDE 能力的一部分。</p>
+</div>
+
+<!-- ============================================================ -->
+<h2>结语：你现在该做什么</h2>
+<table>
+  <thead><tr><th style="width:120px">时间</th><th>动作</th></tr></thead>
+  <tbody>
+    <tr><td><strong>本周</strong></td><td>修正简历和项目描述：删掉"营销短视频生成"，把"AI 工具调用写库"改成"AI 抽取 + 人工确认 + Java 写库（模型无写权限）"。<strong>口径错了比功能少更致命。</strong></td></tr>
+    <tr><td><strong>两周内</strong></td><td>找 1~2 家真实二手车行聊聊（哪怕通过家里关系），问 6.2 里的 8 个问题，记下来。<strong>这是你从"项目开发者"转向"准 FDE"的分水岭。</strong></td></tr>
+    <tr><td><strong>一个月</strong></td><td>把第五部分标为"伪需求"的两个方向从你的功能清单里划掉，面试时明确说"我评估过但判断不该做，原因是……"。<strong>这比多做两个功能值钱。</strong></td></tr>
+    <tr><td><strong>持续</strong></td><td>把 <code>pricing_rule</code> 的 45/60/75 天和 3%/8%/13% 说成"演示初始值，放规则表是为了按门店调整"，并能引用行业均值 43 天 / 优秀 15~20 天作为参照系。<strong>面试必问。</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="src">
+  <strong>数据来源与证据分级说明</strong><br>
+  <span class="ev ev-fact">事实</span> = 有公开来源或代码可证 ·
+  <span class="ev ev-infer">推测</span> = 合理推断，待实地验证 ·
+  <span class="ev ev-open">待验证</span> = 必须调研才能确认 ·
+  <span class="ev ev-case">假设案例</span> = 为说明问题而设计的数字，非真实数据<br><br>
+  <strong>行业数据来源：</strong><br>
+  1. 中国汽车流通协会 2025 上半年二手车企业营商环境调研 / 2025 全年统计（交易量 2010.8 万辆、亏损 73.6%、库存 43 天、获客 6200 元、单笔利润 1500 元等）——
+  <a href="https://news.qq.com/rain/a/20250928A04BJV00">腾讯新闻转载协会报告</a>、
+  <a href="https://auto.cnr.cn/2015xc/20251005/t20251005_527386376.shtml">央广网</a><br>
+  2. 二手车交易流程（收车、漆膜仪、内窥镜、泡水排查、调表核验等）——
+  <a href="https://www.bear-bar.com/wenda/4611795.html">太平洋汽车 · 二手车公司收车流程</a><br>
+  3. 政策与合规（反向开票、临时号牌、跨省通办、经销 0.5% 增值税、严禁阴阳合同）——
+  <a href="https://www.singlewindow.sx.cn/a/announce/policy/2025/0228/224.html">山西省 12 部门《关于进一步促进二手车规范交易的通知》</a>（同类政策各省均有）<br>
+  4. FDE 角色定义与职责 ——
+  <a href="https://www.wikiwand.com/en/Forward_Deployed_Engineer">Wikipedia · Forward Deployed Engineer</a>、
+  <a href="https://jobdescription.org/jobs/artificial-intelligence/forward-deployed-engineer">JobDescription.org</a>、
+  <a href="https://fde.academy/blog/forward-deployed-engineer-responsibilities">FDE Academy</a>、国内 FDE 招聘 JD<br><br>
+  <strong>项目现状依据：</strong>本机代码库 <code>backend/</code>、<code>frontend/src/views/</code>（8 个页面）、
+  <code>backups/video_tables_20261109_1647.sql</code>（视频模块删除证据）、
+  <code>agent/tool/</code>（ReadonlySqlTool / ToolRegistry / CreateVehicleTool 等）。<br><br>
+  <strong>重要提示：</strong>本文档中的行业数据反映 2025 年公开统计，行业变化快，正式使用前请核对最新口径。
+  所有阈值类参数（毛利率、库龄档位、降价幅度）均<strong>不是行业标准</strong>，不同企业做法不同。
+</div>
+
+</div>
+</body>
+</html>
